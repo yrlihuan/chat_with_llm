@@ -17,25 +17,47 @@ CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Summarize a youtube video subtitle')
 
-    models = [
-        'gemini-1.5-pro',
-        'gemini-2.0-flash',
-        'gemini-2.0-flash-thinking-exp-01-21',
-        'gemini-2.0-pro-exp-02-05',
-        'grok-2.0-pro',
-        'grok-2.0-latest',
-        'grok-beta',
-        'deepseek-reasoner-alpha-data-process',
-    ]
+    models = {
+        '4o': 'or-openai/chatgpt-4o-latest',
+        'o1': 'lobechat-o1-2024-12-17',
+        'o1-mini': 'or-openai/o1-mini-2024-09-12',
+        'o3-mini': 'lobechat-o3-mini-2025-01-31',
+        'gemini-1.5-pro': '',
+        'gemini-2.0-flash': '',
+        'gemini-2.0-flash-thinking': 'gemini-2.0-flash-thinking-exp-01-21',
+        'gemini-2.0-pro': 'gemini-2.0-pro-exp-02-05',
+        'grok-2.0-pro': '',
+        'grok-2.0-latest': '',
+        'grok-beta': '',
+        'deepseek-reasoner': 'deepseek-reasoner-alpha-data-process',
+        'deepseek-chat': 'deepseek-chat-alpha-data-process',
+    }
 
     parser.add_argument('youtube_link', type=str, help='The youtube video link')
     parser.add_argument('--model', type=str, default='gemini-2.0-pro-exp-02-05', help='The model to use for generating summary')
-    parser.add_argument('--prompt', type=str, default='下一个:之后是一个视频的字幕内容，请根据字幕生成中文的内容概括，不限字数，请涵盖视频中的具有洞察力的观点。在完成概括之后，最后一行输出一个简短版本的视频标题:', help='The prompt to use for generating summary')
+    parser.add_argument('--prompt', type=str, default='下一个:之后是一个视频的字幕内容，请根据字幕生成中文的内容概括，不限字数，请涵盖视频中的具有洞察力的观点和论据。在完成概括之后，最后一行输出一个简短版本的视频标题:', help='The prompt to use for generating summary')
 
     args = parser.parse_args()
 
+    model_id = models.get(args.model, args.model)
+    if model_id == '':
+        model_id = args.model # 重命名为空表示使用原始名称
+
     youtube_id = args.youtube_link.split('=')[-1]
-    youtube_id_md5 = hashlib.md5(youtube_id.encode()).hexdigest()[:8]
+
+    # 判断字符串是否是16进制
+    def ishex(s):
+        try:
+            int(s, 16)
+            return True
+        except ValueError:
+            return False
+
+    # youtube_id可以是cache id
+    if len(youtube_id) == 8 and ishex(youtube_id):
+        youtube_id_md5 = youtube_id
+    else:
+        youtube_id_md5 = hashlib.md5(youtube_id.encode()).hexdigest()[:8]
 
     sub_cache_dir = os.path.join(CUR_DIR, 'sub_cache')
     if not os.path.exists(sub_cache_dir):
@@ -68,7 +90,7 @@ if __name__ == '__main__':
             if sub[0] == p:
                 contents = sub[2]
     
-    print(f'Parsing subtitle using {args.model}.')
+    print(f'Parsing subtitle using {model_id}.')
     cfg = yaml.load(open(os.path.join(CUR_DIR, 'config.yaml')), yaml.FullLoader)
     
     client = OpenAI(
@@ -83,7 +105,7 @@ if __name__ == '__main__':
                 "content": f'{args.prompt}{contents}',
             }
         ],
-        model=args.model,
+        model=model_id,
     )
 
     summary = chat_completion.choices[0].message.content
@@ -113,7 +135,9 @@ if __name__ == '__main__':
             break
         
     if video_title is not None:
-        filename = f'{youtube_id_md5}_{video_title}_{args.model}.txt'
+        model_save_name = model_id.replace('/', '_')
+
+        filename = f'{youtube_id_md5}_{video_title}_{model_save_name}.txt'
         with open(os.path.join(CUR_DIR, 'video_summary', filename), 'w') as fout:
             fout.write(summary)
 
