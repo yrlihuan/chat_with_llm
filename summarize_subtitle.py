@@ -30,17 +30,43 @@ if __name__ == '__main__':
 
     parser.add_argument('youtube_link', type=str, help='The youtube video link')
     parser.add_argument('--model', type=str, default='gemini-2.0-pro-exp-02-05', help='The model to use for generating summary')
-    parser.add_argument('--prompt', type=str, default='下一个:之后是一个视频的字幕内容，请根据字幕生成中文的内容概括，不限字数，请涵盖视频中的具有洞察力的观点。在总结完之后，再列出视频中最有趣的一些论据。在完成概括之后，最后一行输出一个简短版本的视频标题:', help='The prompt to use for generating summary')
+    parser.add_argument('--prompt', type=str, default='下一个:之后是一个视频的字幕内容，请根据字幕生成中文的内容概括，不限字数，请涵盖视频中的具有洞察力的观点。在完成概括之后，最后一行输出一个简短版本的视频标题:', help='The prompt to use for generating summary')
 
     args = parser.parse_args()
 
-    print("Downloading subtitle file for video: %s" % args.youtube_link)
-    metadata = downsub.retrive_metadata(args.youtube_link)
-    subs = downsub.retrive_subtitles(metadata)
+    youtube_id = args.youtube_link.split('=')[-1]
+    youtube_id_md5 = hashlib.md5(youtube_id.encode()).hexdigest()[:8]
+
+    sub_cache_dir = os.path.join(CUR_DIR, 'sub_cache')
+    if not os.path.exists(sub_cache_dir):
+        os.makedirs(sub_cache_dir)
+
+    cache_candidates = [f'{youtube_id_md5}.chinese.txt', f'{youtube_id_md5}.english.txt']
+
+    subs = []
+    for cache_file in cache_candidates:
+        if os.path.exists(os.path.join(sub_cache_dir, cache_file)):
+            with open(os.path.join(sub_cache_dir, cache_file), 'r') as fin:
+                subs.append((cache_file.split('.')[1], 'txt', fin.read()))
 
     if len(subs) == 0:
-        print("No subtitles found for the video.")
-        sys.exit(1)
+        print("Downloading subtitle file for video: %s" % args.youtube_link)
+        metadata = downsub.retrive_metadata(args.youtube_link)
+        subs = downsub.retrive_subtitles(metadata)
+        if len(subs) == 0:
+            print('Failed to retrieve subtitles for the video.')
+            sys.exit(1)
+
+        for lang, fmt, content in subs:
+            with open(os.path.join(sub_cache_dir, f'{youtube_id_md5}.{lang}.{fmt}'), 'w') as fout:
+                fout.write(content)
+
+    # 选择字幕文件
+    priority = ['chinese', 'english']
+    for p in priority:
+        for sub in subs:
+            if sub[0] == p:
+                contents = sub[2]
     
     print(f'Parsing subtitle using {args.model}.')
     cfg = yaml.load(open(os.path.join(CUR_DIR, 'config.yaml')), yaml.FullLoader)
@@ -54,7 +80,7 @@ if __name__ == '__main__':
         messages=[
             {
                 "role": "user",
-                "content": f'{args.prompt}{subs[0][1]}',
+                "content": f'{args.prompt}{contents}',
             }
         ],
         model=args.model,
@@ -64,8 +90,6 @@ if __name__ == '__main__':
     print(summary)
 
     # 保存结果
-    youtube_id = args.youtube_link.split('=')[-1]
-    youtube_id_md5 = hashlib.md5(youtube_id.encode()).hexdigest()[:8]
 
     summary_lines = summary.split('\n')
     video_title = None

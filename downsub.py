@@ -29,11 +29,11 @@ def retrive_subtitles(metadata):
             continue
 
         for fmt in sub['formats']:
-            if fmt['format'] == 'txt':
+            if fmt['format'] == 'txt' or fmt['format'] == 'srt':
                 url = fmt['url']
                 try:
                     contents = requests.get(url).text
-                    subs.append((sub['language'], contents))
+                    subs.append((sub['language'].lower(), fmt['format'], contents))
                 except Exception as e:
                     print(f'Error retriving subtitles: {e}')
 
