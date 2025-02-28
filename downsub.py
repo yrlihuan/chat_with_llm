@@ -23,9 +23,35 @@ def retrive_metadata(url):
 def retrive_subtitles(metadata):
 #    print(metadata.keys())
 
+    print('Valid langs: ' + ', '.join([sub['language'] for sub in metadata['data']['subtitles']]))
+
+    support_langs = {
+        'chinese': 'chinese',
+        'english': 'english',
+        'japanese': 'japanese',
+        'korean': 'korean',
+        'french': 'french',
+        'english (united states)': 'english',
+        'english (united kingdom)': 'english',
+        'english (australian)': 'english',
+        'english (canadian)': 'english',
+        'english (great britain)': 'english',
+
+        'chinese (auto-generated)': 'chinese_auto',
+        'english (auto-generated)': 'english_auto',
+        'japanese (auto-generated)': 'japanese_auto',
+        'korean (auto-generated)': 'korean_auto',
+        'french (auto-generated)': 'french_auto',
+    }
+
     subs = []
     for sub in metadata['data']['subtitles']:
-        if not sub['language'].lower() == 'english' and not sub['language'].lower() == 'chinese':
+        lang = sub['language'].lower()
+        if lang not in support_langs:
+            continue
+
+        lang_short = support_langs[lang]
+        if lang_short in [s[0] for s in subs]:
             continue
 
         for fmt in sub['formats']:
@@ -33,7 +59,7 @@ def retrive_subtitles(metadata):
                 url = fmt['url']
                 try:
                     contents = requests.get(url).text
-                    subs.append((sub['language'].lower(), fmt['format'], contents))
+                    subs.append((lang_short, fmt['format'], contents))
                 except Exception as e:
                     print(f'Error retriving subtitles: {e}')
 
