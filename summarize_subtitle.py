@@ -107,6 +107,9 @@ if __name__ == '__main__':
         with open(os.path.join(sub_cache_dir, f'{youtube_id_md5}.url'), 'w') as fout:
             fout.write(youtube_link)
 
+        with open(os.path.join(sub_cache_dir, f'{youtube_id_md5}.metadata.json'), 'w') as fout:
+            json.dump(metadata['data'], fout, indent=4)
+
     # 选择字幕文件
     priority = ['chinese', 'english',
                 'chinese_auto', 'english_auto',
