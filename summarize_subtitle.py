@@ -72,7 +72,7 @@ if __name__ == '__main__':
         url_cache = os.path.join(sub_cache_dir, f'{youtube_id_md5}.url')
         if os.path.exists(url_cache):
             with open(url_cache, 'r') as fin:
-                youtube_link = fin.read().strip
+                youtube_link = fin.read().strip()
                 youtube_id = youtube_link.split('=')[-1]
 
     cache_candidates = [f'{youtube_id_md5}.chinese.txt',
