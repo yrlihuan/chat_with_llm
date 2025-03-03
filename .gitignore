@@ -1,4 +1,7 @@
 config.yaml
+sub_cache
+web_cache
+video_summary
 
 
 # Byte-compiled / optimized / DLL files
