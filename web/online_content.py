@@ -5,8 +5,9 @@ from abc import ABC, abstractmethod
 __all__ = ['OnlineContent', 'add_online_retriever', 'get_online_retriever', 'list_online_retrievers']
 
 class OnlineContent(ABC):
-    def __init__(self, name):
+    def __init__(self, name, description=None):
         self.name = name
+        self.description = description
         self.storage = ContentStorage_File(self.storage_path())
 
     """
@@ -35,6 +36,9 @@ class OnlineContent(ABC):
             else:
                 return self.load_parsed(url_or_id)
             
+    def list(self, n, **kwargs):
+        return []
+    
     @abstractmethod
     def url2id(self, url):
         pass
@@ -85,7 +89,7 @@ class OnlineContent(ABC):
                 metadata['url'] = url
 
             self.storage.save(site_id + '.meta', json.dumps(metadata, indent=4))
-            
+
         if raw is not None:
             self.storage.save(site_id + '.raw', raw)
         if parsed is not None:
