@@ -30,18 +30,11 @@ class MRXWLB(online_content.OnlineContent):
         return f'{MRXWLB.BASE_URL}{site_id}/'
     
     def list(self, n, **kwargs):
-        date_start = kwargs.get('date_start', '20200101')
-
-        t = dt.datetime.today()
-        if t.hour < 20:
-            t = t - dt.timedelta(days=1)
+        t = dt.datetime.now() - dt.timedelta(hours=21)
         date_end = kwargs.get('date_end', t.strftime('%Y%m%d'))
 
-        d0 = dt.datetime.strptime(date_start, '%Y%m%d')
         d1 = dt.datetime.strptime(date_end, '%Y%m%d')
-
-        if (d1 - d0).days > n:
-            d0 = d1 - dt.timedelta(days=n-1)
+        d0 = d1 - dt.timedelta(days=n-1)
 
         urls = []
         for d in range((d1 - d0).days + 1):

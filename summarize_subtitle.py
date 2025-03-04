@@ -10,40 +10,19 @@ import downsub
 
 import argparse
 
-from openai import OpenAI
+import llm
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Summarize a youtube video subtitle')
 
-    models = {
-        '4o': 'or-openai/chatgpt-4o-latest',
-        'o1': 'lobechat-o1-2024-12-17',
-        'o1-mini': 'or-openai/o1-mini-2024-09-12',
-        'o3-mini': 'lobechat-o3-mini-2025-01-31',
-        'gpt4.5': 'or-openai/gpt-4.5-preview-2025-02-27',
-        'gpt-4.5': 'or-openai/gpt-4.5-preview-2025-02-27',
-        'gemini-1.5-pro': '',
-        'gemini-2.0-flash': '',
-        'gemini-2.0-flash-thinking': 'gemini-2.0-flash-thinking-exp-01-21',
-        'gemini-2.0-pro': 'gemini-2.0-pro-exp-02-05',
-        'grok-2.0-pro': '',
-        'grok-2.0-latest': '',
-        'grok-beta': '',
-        'deepseek-reasoner': 'deepseek-reasoner-alpha-data-process',
-        'deepseek-chat': 'deepseek-chat-alpha-data-process',
-    }
-
     parser.add_argument('youtube_link', type=str, help='The youtube video link')
     parser.add_argument('--model', type=str, default='gemini-2.0-pro-exp-02-05', help='The model to use for generating summary')
-    parser.add_argument('--prompt', type=str, default='下一个:之后是一个视频的字幕内容，请根据字幕生成中文(Chinese)的内容概括，不限字数，请涵盖视频中的具有洞察力的观点和论据。在完成概括之后，最后一行输出一个简短版本的视频标题', help='The prompt to use for generating summary')
+    parser.add_argument('--prompt', type=str, default='下一行之后是一个视频的字幕内容，请根据字幕生成中文(Chinese)的内容概括，不限字数，请涵盖视频中的具有洞察力的观点和论据。在完成概括之后，最后一行输出一个简短版本的视频标题。', help='The prompt to use for generating summary')
 
     args = parser.parse_args()
-
-    model_id = models.get(args.model, args.model)
-    if model_id == '':
-        model_id = args.model # 重命名为空表示使用原始名称
+    model_id = llm.get_model(args.model)
 
     # 判断字符串是否是16进制
     def ishex(s):
@@ -122,24 +101,7 @@ if __name__ == '__main__':
                 contents = sub[2]
     
     print(f'Parsing subtitle using {model_id}.')
-    cfg = yaml.load(open(os.path.join(CUR_DIR, 'config.yaml')), yaml.FullLoader)
-    
-    client = OpenAI(
-        api_key=cfg["OPENAI_API_KEY"],
-        base_url=cfg['OPENAI_API_BASE'],
-    )
-
-    chat_completion = client.chat.completions.create(
-        messages=[
-            {
-                "role": "user",
-                "content": f'{args.prompt}:{contents}',
-            }
-        ],
-        model=model_id,
-    )
-
-    summary = chat_completion.choices[0].message.content
+    summary = llm.chat(args.prompt, contents, model_id)
     print(summary)
 
     # 保存结果
