@@ -16,7 +16,7 @@ def run_help(parser):
 
 def run_list(args):
     retriever = oc.get_online_retriever(args.retriever)
-    urls = retriever.list(**args.params)
+    urls = retriever.list(args.n, **args.params)
 
     if len(urls) == 0:
         print('Retriever {args.retriever} doesn\'t support listing.')
@@ -30,6 +30,20 @@ def run_retrive(args):
 
     if args.print_results:
         print(parsed)
+
+def run_retrieve_many(args):
+    retriever = oc.get_online_retriever(args.retriever)
+    urls = retriever.list(args.n, **args.params)
+
+    rets = []
+    for url in urls:
+        print(f'Retrieving {url}...', end='')
+        parsed = retriever.retrieve(url, force_fetch=args.force_fetch, force_parse=args.force_parse, update_cache=args.update_cache)
+        if parsed:
+            rets.append((url, parsed))
+            print('done')
+        else:
+            print('failed')
 
 if __name__ == '__main__':
     dict_converter = lambda x: dict([tuple(kv.split('=')) for kv in x.split(',')])
@@ -52,6 +66,13 @@ if __name__ == '__main__':
     parser_retrieve.add_argument('--force-parse', type=bool_converter, default=False)
     parser_retrieve.add_argument('--update-cache', type=bool_converter, default=True)
 
+    parser_retrieve_many = subparsers.add_parser('retrieve_many', help='Retrieve content for many urls')
+    parser_retrieve_many.add_argument('-n', type=int, default=50, help='Number of urls to retrieve')
+    parser_retrieve_many.add_argument('--params', type=dict_converter, default={}, help='Parameters for the online retriever')
+    parser_retrieve_many.add_argument('--force-fetch', type=bool_converter, default=False)
+    parser_retrieve_many.add_argument('--force-parse', type=bool_converter, default=False)
+    parser_retrieve_many.add_argument('--update-cache', type=bool_converter, default=True)
+
     args = parser.parse_args()
 
     if args.command == 'help' or args.command is None:
@@ -60,11 +81,9 @@ if __name__ == '__main__':
         run_list(args)
     elif args.command == 'retrieve':
         run_retrive(args)
-
-    # retrievers = oc.list_online_retrievers()
-    # print(retrievers)
-
-    # mrxwlb = oc.get_online_retriever('mrxwlb')
-    # parsed = mrxwlb.retrieve('20250301', force_fetch=False, force_parse=True, update_cache=True)
-
-    # print(parsed)
+    elif args.command == 'retrieve_many':
+        run_retrieve_many(args)
+    else:
+        print('Unknown command')
+        parser.print_help()
+        sys.exit(1)

@@ -21,7 +21,11 @@ class OnlineContent(ABC):
         key_raw = site_id + '.raw'
 
         if force_fetch or not self.storage.has(key_raw):
-            url, site_id, metadata, raw = self.fetch(url_or_id)
+            fetch_results = self.fetch(url_or_id)
+            if fetch_results is None:
+                return None
+            
+            url, site_id, metadata, raw = fetch_results
             parsed = self.parse(raw)
             if update_cache:
                 self.save(url=url, site_id=site_id, metadata=metadata, raw=raw, parsed=parsed)

@@ -56,9 +56,10 @@ class MRXWLB(online_content.OnlineContent):
     def fetch(self, url_or_id):
         url, site_id = self.parse_url_id(url_or_id)
         
-        print('fetch start')
         response = requests.get(url)
-        print('fetch end')
+        if response.status_code != 200:
+            return None
+
         metadata = {
             'url': url,
         }
