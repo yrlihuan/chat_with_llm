@@ -33,15 +33,15 @@ def get_model(simple_name):
 
     return model_id
 
-def chat(prompt, contents, model_id, use_case='default', save=True, sep='\n'):
-    response, reasoning = chat_impl(prompt, contents, model_id, use_case, save, sep)
+def chat(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False):
+    response, reasoning = chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_contents=prompt_follow_contents)
     return response
 
-def reason(prompt, contents, model_id, use_case='default', save=True, sep='\n'):
-    response, reasoning = chat_impl(prompt, contents, model_id, use_case, save, sep)
+def reason(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False):
+    response, reasoning = chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_contents=prompt_follow_contents)
     return response, reasoning
 
-def chat_impl(prompt, contents, model_id, use_case='default', save=True, sep='\n'):
+def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_contents):
     cfg = yaml.load(open(os.path.join(CUR_DIR, 'config.yaml')), yaml.FullLoader)
     
     client = OpenAI(
@@ -49,11 +49,12 @@ def chat_impl(prompt, contents, model_id, use_case='default', save=True, sep='\n
         base_url=cfg['OPENAI_API_BASE'],
     )
 
+    request_message = f'{prompt}{sep}{contents}' if not prompt_follow_contents else f'{contents}{sep}{prompt}'
     chat_completion = client.chat.completions.create(
         messages=[
             {
                 "role": "user",
-                "content": f'{prompt}{sep}{contents}',
+                "content": request_message,
             }
         ],
         model=model_id,
