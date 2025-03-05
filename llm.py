@@ -6,6 +6,8 @@ from openai import OpenAI
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 
+__all__ = ['get_model', 'chat', 'reason']
+
 models = {
     '4o': 'or-openai/chatgpt-4o-latest',
     'o1': 'lobechat-o1-2024-12-17',
@@ -32,6 +34,14 @@ def get_model(simple_name):
     return model_id
 
 def chat(prompt, contents, model_id, use_case='default', save=True, sep='\n'):
+    response, reasoning = chat_impl(prompt, contents, model_id, use_case, save, sep)
+    return response
+
+def reason(prompt, contents, model_id, use_case='default', save=True, sep='\n'):
+    response, reasoning = chat_impl(prompt, contents, model_id, use_case, save, sep)
+    return response, reasoning
+
+def chat_impl(prompt, contents, model_id, use_case='default', save=True, sep='\n'):
     cfg = yaml.load(open(os.path.join(CUR_DIR, 'config.yaml')), yaml.FullLoader)
     
     client = OpenAI(
@@ -49,7 +59,7 @@ def chat(prompt, contents, model_id, use_case='default', save=True, sep='\n'):
         model=model_id,
     )
 
-    summary = chat_completion.choices[0].message.content
+    response = chat_completion.choices[0].message.content
 
     if 'reasoning_content' in chat_completion.choices[0].message:
         reasoning = chat_completion.choices[0].message.reasoning_content
@@ -73,7 +83,7 @@ def chat(prompt, contents, model_id, use_case='default', save=True, sep='\n'):
         data = f'model: {model_id}\n'
         data += f'prompt:\n{prompt}\n'
         data += f'reasoning:\n{reasoning}\n' if reasoning else ''
-        data += f'response:\n{contents}\n'
+        data += f'response:\n{response}\n'
 
         with open(filename, 'w') as fout:
             fout.write(data)
@@ -81,4 +91,4 @@ def chat(prompt, contents, model_id, use_case='default', save=True, sep='\n'):
         with open(filename[:-len('.txt')] + '.input.txt', 'w') as fout:
             fout.write(contents)
                                                                   
-    return summary
+    return response, reasoning

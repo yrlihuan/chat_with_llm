@@ -32,8 +32,8 @@ if __name__ == '__main__':
         else:
             print(f'Retrieving {key_date} failed')
 
+    print(f'数据准备完毕，开始使用模型{model_id}进行分析...\n')
     message = llm.chat(prompt=prompt, contents=contents, model_id=model_id,
                        use_case='xwlb', save=True)
-    print(model_id)
     print(message)
     

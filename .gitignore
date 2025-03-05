@@ -2,6 +2,8 @@ config.yaml
 sub_cache
 web_cache
 video_summary
+chat_history
+.DS_Store
 
 
 # Byte-compiled / optimized / DLL files
