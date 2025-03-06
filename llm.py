@@ -6,7 +6,7 @@ from openai import OpenAI
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 
-__all__ = ['get_model', 'chat', 'reason']
+__all__ = ['get_model', 'get_save_path', 'get_model_query_delay', 'chat', 'reason']
 
 models = {
     '4o': 'or-openai/chatgpt-4o-latest',
@@ -22,8 +22,15 @@ models = {
     'grok-2.0-pro': '',
     'grok-2.0-latest': '',
     'grok-beta': '',
+    'claude-3.7': 'claude-3-7-sonnet-20250219',
     'deepseek-reasoner': 'deepseek-reasoner-alpha-data-process',
     'deepseek-chat': 'deepseek-chat-alpha-data-process',
+}
+
+models_aliases = {v: k for k, v in models.items()}
+
+model_query_delays = {
+    'gemini-2.0-pro': 7,
 }
 
 def get_model(simple_name):
@@ -32,6 +39,13 @@ def get_model(simple_name):
         model_id = simple_name # 重命名为空表示使用原始名称
 
     return model_id
+
+def get_save_path(use_case):
+    path = os.path.join(CUR_DIR, 'chat_history', use_case)
+    return path
+
+def get_model_query_delay(model_id_or_alias):
+    return model_query_delays.get(model_id_or_alias, None) or model_query_delays.get(models_aliases.get(model_id_or_alias, ''), 0)
 
 def chat(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False):
     response, reasoning = chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_contents=prompt_follow_contents)
@@ -68,12 +82,13 @@ def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_con
         reasoning = None
 
     if save:
-        use_case_dir = os.path.join('chat_history', use_case)
+        use_case_dir = get_save_path(use_case)
         if not os.path.exists(use_case_dir):
             os.makedirs(use_case_dir)
 
         timestamp = time.strftime('%Y%m%d_%H%M%S')
         filename = f'{use_case_dir}/{timestamp}_{model_id}.txt'
+        filename = filename.replace(':', '_').replace('/', '_')
         while os.path.exists(filename):
             if filename.endswith(f'{model_id}.txt'):
                 filename = filename[:-len('.txt')] + '_1.txt'
