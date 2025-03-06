@@ -2,7 +2,7 @@ import os.path
 import yaml
 import time
 
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -47,15 +47,19 @@ def get_save_path(use_case):
 def get_model_query_delay(model_id_or_alias):
     return model_query_delays.get(model_id_or_alias, None) or model_query_delays.get(models_aliases.get(model_id_or_alias, ''), 0)
 
-def chat(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False):
-    response, reasoning = chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_contents=prompt_follow_contents)
+def chat(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False, retries=10):
+    response, reasoning = chat_impl(prompt, contents, model_id,
+                                    use_case=use_case, save=save, sep=sep,
+                                    prompt_follow_contents=prompt_follow_contents, retries=retries)
     return response
 
-def reason(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False):
-    response, reasoning = chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_contents=prompt_follow_contents)
+def reason(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False, retries=10):
+    response, reasoning = chat_impl(prompt, contents, model_id,
+                                    use_case=use_case, save=save, sep=sep,
+                                    prompt_follow_contents=prompt_follow_contents, retries=retries)
     return response, reasoning
 
-def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_contents):
+def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_contents, retries):
     cfg = yaml.load(open(os.path.join(CUR_DIR, 'config.yaml')), yaml.FullLoader)
     
     client = OpenAI(
@@ -64,15 +68,28 @@ def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_con
     )
 
     request_message = f'{prompt}{sep}{contents}' if not prompt_follow_contents else f'{contents}{sep}{prompt}'
-    chat_completion = client.chat.completions.create(
-        messages=[
-            {
-                "role": "user",
-                "content": request_message,
-            }
-        ],
-        model=model_id,
-    )
+    chat_completion = None
+    retry_cnt = 0
+    while chat_completion is None:
+        try:
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": request_message,
+                    }
+                ],
+                model=model_id,
+            )
+        except OpenAIError as ex:
+            if retry_cnt < retries:
+                print('openai api failed, retrying...')
+                time.sleep(min(5 * retry_cnt, 60))
+                retry_cnt += 1
+                continue
+            else:
+                print('openai api failed, giving up')
+                raise ex
 
     response = chat_completion.choices[0].message.content
 

@@ -44,7 +44,8 @@ if __name__ == '__main__':
         message = llm.chat(
             prompt=prompt, contents=contents, model_id=model_id,
             use_case=args.llm_use_case, save=False,
-            prompt_follow_contents=args.prompt_follow_contents)
+            prompt_follow_contents=args.prompt_follow_contents,
+            retries=20)
         
         outputs += f'{key_date}\n{message}\n\n'
 
