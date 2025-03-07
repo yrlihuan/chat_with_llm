@@ -101,7 +101,7 @@ if __name__ == '__main__':
                 contents = sub[2]
     
     print(f'Parsing subtitle using {model_id}.')
-    summary = llm.chat(args.prompt, contents, model_id)
+    summary = llm.chat(args.prompt, contents, model_id, use_case='youtube_subtitle', save=True)
     print(summary)
 
     # 保存结果

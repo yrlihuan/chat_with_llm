@@ -31,6 +31,7 @@ models_aliases = {v: k for k, v in models.items()}
 
 model_query_delays = {
     'gemini-2.0-pro': 7,
+    'gemini-2.0-flash-thinking': 7,
 }
 
 def get_model(simple_name):
@@ -104,8 +105,7 @@ def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_con
             os.makedirs(use_case_dir)
 
         timestamp = time.strftime('%Y%m%d_%H%M%S')
-        filename = f'{use_case_dir}/{timestamp}_{model_id}.txt'
-        filename = filename.replace(':', '_').replace('/', '_')
+        filename = f'{use_case_dir}/{timestamp}_{model_id.replace("/", "_").replace(":", "_")}.txt'
         while os.path.exists(filename):
             if filename.endswith(f'{model_id}.txt'):
                 filename = filename[:-len('.txt')] + '_1.txt'
