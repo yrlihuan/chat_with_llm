@@ -48,19 +48,21 @@ def get_save_path(use_case):
 def get_model_query_delay(model_id_or_alias):
     return model_query_delays.get(model_id_or_alias, None) or model_query_delays.get(models_aliases.get(model_id_or_alias, ''), 0)
 
-def chat(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False, retries=10):
+def chat(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False, retries=10, throw_ex=True):
     response, reasoning = chat_impl(prompt, contents, model_id,
                                     use_case=use_case, save=save, sep=sep,
-                                    prompt_follow_contents=prompt_follow_contents, retries=retries)
+                                    prompt_follow_contents=prompt_follow_contents,
+                                    retries=retries, throw_ex=throw_ex)
     return response
 
-def reason(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False, retries=10):
+def reason(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False, retries=10, throw_ex=True):
     response, reasoning = chat_impl(prompt, contents, model_id,
                                     use_case=use_case, save=save, sep=sep,
-                                    prompt_follow_contents=prompt_follow_contents, retries=retries)
+                                    prompt_follow_contents=prompt_follow_contents,
+                                    retries=retries, throw_ex=throw_ex)
     return response, reasoning
 
-def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_contents, retries):
+def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_contents, retries, throw_ex):
     cfg = yaml.load(open(os.path.join(CUR_DIR, 'config.yaml')), yaml.FullLoader)
     
     client = OpenAI(
@@ -90,7 +92,14 @@ def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_con
                 continue
             else:
                 print('openai api failed, giving up')
-                raise ex
+                print('input_len: ', len(prompt), len(contents))
+                print(prompt)
+                print(contents[:min(256, len(contents))])
+
+                if throw_ex:
+                    raise ex
+                else:
+                    return None, None
 
     response = chat_completion.choices[0].message.content
 
