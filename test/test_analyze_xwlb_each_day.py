@@ -13,19 +13,20 @@ from web import online_content as oc
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Analyze xwlb news using llm.')
 
-    parser.add_argument('-d', '--date', default='20250303', help='The last date to analyze')
+    last_day = time.strftime('%Y%m%d', time.localtime(time.time() - 86400))
+    parser.add_argument('-d', '--date', default=last_day, help='The last date to analyze')
     parser.add_argument('-s', '--step', type=int, default=1, help='Pick news from every n days')
-    parser.add_argument('-n', type=int, default=12, help='Contain at most news from the last n days')
+    parser.add_argument('-n', type=int, default=1, help='Contain at most news from the last n days')
     parser.add_argument('-m', '--model', type=str, default='gemini-2.0-pro', help='The model to use for generating summary')
-    parser.add_argument('-p', '--prompt', default=f'下一行之后是中央电视台新闻联播的内容。将新闻中除了政治领域以外的和以往不同的表述(不要从文章中推断，而是使用已有的知识)总结一下。尽量简短，只包括最重要的一两点。')
+    parser.add_argument('-p', '--prompt', default=f'下一行之后是中央电视台新闻联播的内容。将新闻中除了政治领域以外的和以往不同的表述(不要从文章中推断，而是使用已有的知识)总结一下。尽量简短。')
     parser.add_argument('--prompt_follow_contents', type=lambda s: s.lower() == 'true' or s == '1', default=False, help='Whether to follow the contents after the prompt')
     parser.add_argument('--llm_use_case', type=str, default='xwlb_each_day', help='The use case for the llm model')
 
     args = parser.parse_args()
 
     model_id = llm.get_model(args.model)
-    retriever = oc.get_online_retriever('mrxwlb')
-    urls = retriever.list(args.n * args.step, date_end=args.date)
+    retriever = oc.get_online_retriever('mrxwlb', date_end=args.date)
+    urls = retriever.list(args.n * args.step)
     
     outputs = ''
     outputs += args.prompt + '\n\n'
@@ -35,7 +36,7 @@ if __name__ == '__main__':
         key_date = retriever.url2id(url)
         contents = ''
         
-        parsed = retriever.retrieve(url, force_fetch=False, force_parse=False, update_cache=True)
+        parsed = retriever.retrieve(url)
         if parsed:
             contents += f'{key_date}日新闻联播文字版\n{parsed}\n'
         else:

@@ -8,10 +8,12 @@ from . import online_content
 # 每日新闻联播
 # 网址: https://cn.govopendata.com/xinwenlianbo/20180331/
 class MRXWLB(online_content.OnlineContent):
+    NAME = 'mrxwlb'
+    DESCRIPTION = '每日新闻联播'
     BASE_URL = 'https://cn.govopendata.com/xinwenlianbo/'
 
-    def __init__(self):
-        super().__init__('mrxwlb', '新闻联播')
+    def __init__(self, params):
+        super().__init__(MRXWLB.NAME, MRXWLB.DESCRIPTION, params)
 
     def url2id(self, url):
         if not url.startswith(MRXWLB.BASE_URL):
@@ -29,9 +31,9 @@ class MRXWLB(online_content.OnlineContent):
         
         return f'{MRXWLB.BASE_URL}{site_id}/'
     
-    def list(self, n, **kwargs):
+    def list(self, n):
         t = dt.datetime.now() - dt.timedelta(hours=21)
-        date_end = kwargs.get('date_end', t.strftime('%Y%m%d'))
+        date_end = self.params.get('date_end', t.strftime('%Y%m%d'))
 
         d1 = dt.datetime.strptime(date_end, '%Y%m%d')
         d0 = d1 - dt.timedelta(days=n-1)
@@ -71,4 +73,4 @@ class MRXWLB(online_content.OnlineContent):
         
         return base_node.text
 
-online_content.add_online_retriever(MRXWLB())
+online_content.add_online_retriever(MRXWLB.NAME, MRXWLB)

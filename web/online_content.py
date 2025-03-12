@@ -5,10 +5,15 @@ from abc import ABC, abstractmethod
 __all__ = ['OnlineContent', 'add_online_retriever', 'get_online_retriever', 'list_online_retrievers']
 
 class OnlineContent(ABC):
-    def __init__(self, name, description=None):
+    def __init__(self, name, description, params={}):
         self.name = name
         self.description = description
         self.storage = ContentStorage_File(self.storage_path())
+        self.params = params
+
+        self.force_fetch = params.get('force_fetch', False)
+        self.force_parse = params.get('force_parse', False)
+        self.update_cache = params.get('update_cache', True)
 
     """
     url_or_id: url or site_id
@@ -16,31 +21,31 @@ class OnlineContent(ABC):
     force_parse: force parse the raw data
     update_cache: update the saved data
     """
-    def retrieve(self, url_or_id, force_fetch=False, force_parse=False, update_cache=True):
+    def retrieve(self, url_or_id):
         url, site_id = self.parse_url_id(url_or_id)
         key_raw = site_id + '.raw'
 
-        if force_fetch or not self.storage.has(key_raw):
+        if self.force_fetch or not self.storage.has(key_raw):
             fetch_results = self.fetch(url_or_id)
             if fetch_results is None:
                 return None
             
             url, site_id, metadata, raw = fetch_results
             parsed = self.parse(raw)
-            if update_cache:
+            if self.update_cache:
                 self.save(url=url, site_id=site_id, metadata=metadata, raw=raw, parsed=parsed)
             return parsed
         else:
-            if force_parse:
+            if self.force_parse:
                 url, site_id, metadata, raw = self.load_raw(url_or_id)
                 parsed = self.parse(raw)
-                if update_cache:
+                if self.update_cache:
                     self.save(url=url, site_id=site_id, parsed=parsed)
                 return parsed
             else:
                 return self.load_parsed(url_or_id)
             
-    def list(self, n, **kwargs):
+    def list(self, n):
         return []
     
     @abstractmethod
@@ -130,14 +135,17 @@ class ContentStorage_File():
         return keys
     
 all_online_retrievers = {}
-def add_online_retriever(retriever):
-    assert isinstance(retriever, OnlineContent)
-    assert retriever.name not in all_online_retrievers, f'{retriever.name} already exists'
+def add_online_retriever(name, retriever_class):
+    assert issubclass(retriever_class, OnlineContent)
+    assert name not in all_online_retrievers, f'{name} already exists'
 
-    all_online_retrievers[retriever.name] = retriever
+    all_online_retrievers[name] = retriever_class
 
-def get_online_retriever(name):
-    return all_online_retrievers[name]
+def get_online_retriever(name, **params):
+    if name not in all_online_retrievers:
+        raise RuntimeError(f'Unknown online retriever: {name}')
+    
+    return all_online_retrievers[name](params)
 
 def list_online_retrievers():
     return list(all_online_retrievers.keys())

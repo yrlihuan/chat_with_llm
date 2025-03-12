@@ -20,14 +20,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     model_id = llm.get_model(args.model)
-    retriever = oc.get_online_retriever('mrxwlb')
-    urls = retriever.list(args.ndays, date_end=args.date)
+    retriever = oc.get_online_retriever('mrxwlb', date_end=args.date)
+    urls = retriever.list(args.ndays)
     
     prompt = args.prompt
     contents = ''
     for url in urls:
         key_date = retriever.url2id(url)
-        parsed = retriever.retrieve(url, force_fetch=False, force_parse=False, update_cache=True)
+        parsed = retriever.retrieve(url)
         if parsed:
             if url == urls[-1]:
                 contents += '-' * 80 + '\n'
