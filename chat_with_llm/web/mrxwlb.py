@@ -48,24 +48,20 @@ class MRXWLB(online_content.OnlineContent):
 
         return urls
 
-    def fetch(self, url_or_id):
-        url, site_id = self.parse_url_id(url_or_id)
-        
+    def fetch(self, url):
         response = requests.get(url)
         if response.status_code != 200:
             return None
 
-        metadata = {
-            'url': url,
-        }
+        metadata = {}
         if response.headers['Last-Modified']:
             metadata['last-modified'] = response.headers['Last-Modified']
 
         raw = response.text
 
-        return url, site_id, metadata, raw
+        return response.url, metadata, raw
 
-    def parse(self, raw):
+    def parse(self, url, raw):
         soup = BeautifulSoup(raw, 'html.parser')
         base_node = soup.find('main', class_='news-content')
         if not base_node:

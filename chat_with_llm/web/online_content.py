@@ -26,29 +26,47 @@ class OnlineContent(ABC):
     def retrieve(self, url_or_id):
         url, site_id = self.parse_url_id(url_or_id)
         key_raw = site_id + '.raw'
+        key_parsed = site_id + '.parsed'
+
+        if url is None:
+            if self.storage.has(key_raw):
+                metadata, raw = self.load_raw(site_id)
+                url = metadata.get('url', None)
+            else:
+                raise RuntimeError(f'Cannot decide url from {url_or_id} and no cache found.')
 
         if self.force_fetch or not self.storage.has(key_raw):
-            fetch_results = self.fetch(url_or_id)
+            fetch_results = self.fetch(url)
             if fetch_results is None:
                 return None
             
-            url, site_id, metadata, raw = fetch_results
-            parsed = self.parse(raw)
+            redirect_url, metadata, raw = fetch_results
+            parsed = self.parse(redirect_url, raw)
+
+            metadata = metadata or {}
+            if 'url' not in metadata:
+                metadata['url'] = url
+
+            if url != redirect_url and 'redirect_url' not in metadata:
+                metadata['redirect_url'] = redirect_url
+
+            if raw is None:
+                raise RuntimeError(f'Failed to fetch {url}')
+
             if self.update_cache:
-                self.save(url=url, site_id=site_id, metadata=metadata, raw=raw, parsed=parsed)
+                self.save(site_id=site_id, metadata=metadata, raw=raw, parsed=parsed)
+
             return parsed
         else:
-            if self.force_parse:
-                url, site_id, metadata, raw = self.load_raw(url_or_id)
-                parsed = self.parse(raw)
+            if self.force_parse or not self.storage.has(key_parsed):
+                metadata, raw = self.load_raw(site_id)
+                redirect_url = metadata.get('redirect_url', url)
+                parsed = self.parse(redirect_url, raw)
                 if self.update_cache:
-                    self.save(url=url, site_id=site_id, parsed=parsed)
+                    self.save(site_id=site_id, parsed=parsed)
                 return parsed
             else:
-                return self.load_parsed(url_or_id)
-            
-    def list(self, n):
-        return []
+                return self.load_parsed(site_id)
     
     @abstractmethod
     def url2id(self, url):
@@ -57,14 +75,18 @@ class OnlineContent(ABC):
     @abstractmethod
     def id2url(self, site_id):
         pass
+            
+    @abstractmethod
+    def list(self, n):
+        pass
         
     @abstractmethod
-    def fetch(self, url_or_id):
-        # returns url, site_id, metadata, raw
+    def fetch(self, url):
+        # returns redirect_url, metadata, raw
         pass
 
     @abstractmethod
-    def parse(self, raw):
+    def parse(self, url, raw):
         # returns parsed
         pass
 
@@ -78,28 +100,22 @@ class OnlineContent(ABC):
 
         return url, site_id
 
-    def load_raw(self, url_or_id):
-        url, site_id = self.parse_url_id(url_or_id)
-
+    def load_raw(self, site_id):
         raw = self.storage.load(site_id + '.raw')
         meta = json.loads(self.storage.load(site_id + '.meta'))
 
-        return url, site_id, meta, raw
+        return meta, raw
 
-    def load_parsed(self, url_or_id):
-        url, site_id = self.parse_url_id(url_or_id)
-
+    def load_parsed(self, site_id):
         return self.storage.load(site_id + '.parsed')
 
-    def save(self, url=None, site_id=None, metadata=None, raw=None, parsed=None):
+    def save(self, site_id, metadata=None, raw=None, parsed=None):
         if metadata is not None:
-            if url and 'url' not in metadata:
-                metadata['url'] = url
-
             self.storage.save(site_id + '.meta', json.dumps(metadata, indent=4))
 
         if raw is not None:
             self.storage.save(site_id + '.raw', raw)
+
         if parsed is not None:
             self.storage.save(site_id + '.parsed', parsed)
 

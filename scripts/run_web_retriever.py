@@ -65,7 +65,7 @@ if __name__ == '__main__':
     parser_list = subparsers.add_parser('list', help='List urls')
     parser_list.add_argument('retriever', type=str, default='', help='Name of the online retriever')
     parser_list.add_argument('--params', type=dict_converter, default={}, help='Parameters for the online retriever')
-    parser_list.add_argument('-n', type=int, default=50, help='Number of urls to list')
+    parser_list.add_argument('-n', type=int, default=20, help='Number of urls to list')
 
     parser_retrieve = subparsers.add_parser('retrieve', help='Retrieve content')
     parser_retrieve.add_argument('retriever', type=str, default='', help='Name of the online retriever')

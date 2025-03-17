@@ -14,6 +14,8 @@ class Config():
                 break
         else:
             raise Exception('No config file found in %s' % config_candidates)
+        
+        # print(self.cfg)
 
     def __getitem__(self, key):
         return self.cfg[key]
