@@ -7,8 +7,8 @@ from tqdm import tqdm
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-import llm
-from web import online_content as oc
+from chat_with_llm import llm
+from chat_with_llm.web import online_content as oc
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Analyze xwlb news using llm.')

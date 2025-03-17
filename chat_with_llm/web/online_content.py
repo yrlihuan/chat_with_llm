@@ -2,13 +2,15 @@ import os
 import json
 from abc import ABC, abstractmethod
 
+from chat_with_llm import config
+
 __all__ = ['OnlineContent', 'add_online_retriever', 'get_online_retriever', 'list_online_retrievers']
 
 class OnlineContent(ABC):
     def __init__(self, name, description, params={}):
         self.name = name
         self.description = description
-        self.storage = ContentStorage_File(self.storage_path())
+        self.storage = ContentStorage_File(name)
         self.params = params
 
         self.force_fetch = params.get('force_fetch', False)
@@ -75,9 +77,6 @@ class OnlineContent(ABC):
             url = self.id2url(site_id)
 
         return url, site_id
-    
-    def storage_path(self):
-        return os.path.join('web_cache', self.name)
 
     def load_raw(self, url_or_id):
         url, site_id = self.parse_url_id(url_or_id)
@@ -108,7 +107,9 @@ class OnlineContent(ABC):
         return self.storage.list()
 
 class ContentStorage_File():
-    def __init__(self, storage_path):
+    def __init__(self, identifier):
+        storage_base = config.get('WEB_CACHE_DIR')
+        storage_path = os.path.join(storage_base, identifier)
         self.storage_path = storage_path
         if not os.path.exists(storage_path):
             os.makedirs(storage_path)

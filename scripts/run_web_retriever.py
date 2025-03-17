@@ -2,7 +2,7 @@ import sys
 import os.path
 import argparse
 
-from web import online_content as oc
+from chat_with_llm.web import online_content as oc
 
 def merge_retrieve_args(args):
     params = args.params.copy()

@@ -1,8 +1,9 @@
 import os.path
-import yaml
 import time
 
 from openai import OpenAI, OpenAIError
+
+from chat_with_llm import config
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -42,7 +43,7 @@ def get_model(simple_name):
     return model_id
 
 def get_save_path(use_case):
-    path = os.path.join(CUR_DIR, 'chat_history', use_case)
+    path = os.path.join(config.get('CHAT_HISTORY_DIR'), use_case)
     return path
 
 def get_model_query_delay(model_id_or_alias):
@@ -63,11 +64,9 @@ def reason(prompt, contents, model_id, use_case='default', save=True, sep='\n', 
     return response, reasoning
 
 def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_contents, retries, throw_ex):
-    cfg = yaml.load(open(os.path.join(CUR_DIR, 'config.yaml')), yaml.FullLoader)
-    
     client = OpenAI(
-        api_key=cfg["OPENAI_API_KEY"],
-        base_url=cfg['OPENAI_API_BASE'],
+        api_key=config.get("OPENAI_API_KEY"),
+        base_url=config.get('OPENAI_API_BASE'),
     )
 
     request_message = f'{prompt}{sep}{contents}' if not prompt_follow_contents else f'{contents}{sep}{prompt}'

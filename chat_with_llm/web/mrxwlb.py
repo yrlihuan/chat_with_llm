@@ -3,7 +3,7 @@ import datetime as dt
 from bs4 import BeautifulSoup
 import requests
 
-from . import online_content
+from chat_with_llm.web import online_content
 
 # 每日新闻联播
 # 网址: https://cn.govopendata.com/xinwenlianbo/20180331/

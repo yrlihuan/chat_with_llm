@@ -2,14 +2,14 @@ import requests
 import os.path
 import yaml
 
+from chat_with_llm import config
+
 CURDIR = os.path.dirname(os.path.abspath(__file__))
 
 def retrive_metadata(url):
-    cfg = yaml.load(open(os.path.join(CURDIR, 'config.yaml')), yaml.FullLoader)
-
     api_url = 'https://api.downsub.com/download'
     headers = {
-        'Authorization': f'Bearer {cfg["DOWNSUB_API_KEY"]}',
+        'Authorization': f'Bearer {config.get("DOWNSUB_API_KEY")}',
         'Content-Type': 'application/json'
     }   
     data = {
@@ -69,6 +69,4 @@ if __name__ == '__main__':
     url = 'https://www.youtube.com/watch?v=_1f-o0nqpEI'
     metadata = retrive_metadata(url)
     response = retrive_subtitles(metadata)
-    
-                
 

@@ -10,9 +10,8 @@ import downsub
 
 import argparse
 
-import llm
-
-CUR_DIR = os.path.dirname(os.path.abspath(__file__))
+from chat_with_llm import llm
+from chat_with_llm import config
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Summarize a youtube video subtitle')
@@ -43,7 +42,7 @@ if __name__ == '__main__':
         youtube_id = args.youtube_link.split('=')[-1]
         youtube_id_md5 = hashlib.md5(youtube_id.encode()).hexdigest()[:8]
 
-    sub_cache_dir = os.path.join(CUR_DIR, 'sub_cache')
+    sub_cache_dir = config.get('SUBTITLE_CACHE_DIR')
     if not os.path.exists(sub_cache_dir):
         os.makedirs(sub_cache_dir)
 
@@ -131,7 +130,8 @@ if __name__ == '__main__':
         model_save_name = model_id.replace('/', '_')
 
         filename = f'{youtube_id_md5}_{video_title}_{model_save_name}.txt'
-        with open(os.path.join(CUR_DIR, 'video_summary', filename), 'w') as fout:
+        save_dir = config.get('VIDEO_SUMMARY_DIR')
+        with open(os.path.join(save_dir, filename), 'w') as fout:
             fout.write(f'video: {args.youtube_link}\n')
             fout.write(f'prompty: {args.prompt}\n\n')
             fout.write(summary)

@@ -1,0 +1,4 @@
+openai
+PyYAML
+beautifulsoup4
+crawl4ai
