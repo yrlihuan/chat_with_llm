@@ -1,0 +1,32 @@
+import asyncio
+import crawl4ai
+
+from crawl4ai import DefaultMarkdownGenerator
+
+brower_cfg = crawl4ai.BrowserConfig(
+    headless=True,
+    proxy='http://192.168.50.246:10809',
+)
+
+async def async_main():
+
+    async with crawl4ai.AsyncWebCrawler(config=brower_cfg) as crawler:
+        result = await crawler.arun(
+            url="https://news.ycombinator.com/news",
+#            url='https://www.zhihu.com/question/443588237',
+        )
+
+        generator = DefaultMarkdownGenerator()
+        markdown_result = generator.generate_markdown(result.cleaned_html, base_url=result.url)
+        
+        print(markdown_result.raw_markdown == result.markdown)
+        #print(result.markdown)
+        #print(markdown_result.raw_markdown)
+
+
+import time
+if __name__ == "__main__":
+    asyncio.run(async_main())
+
+    # print current time
+    print("Current Time =", time.asctime(time.localtime(time.time())))
