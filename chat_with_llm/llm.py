@@ -26,6 +26,8 @@ models = {
     'claude-3.7': 'claude-3-7-sonnet-20250219',
     'deepseek-reasoner': 'deepseek-reasoner-alpha-data-process',
     'deepseek-chat': 'deepseek-chat-alpha-data-process',
+    'ds-reasoner': 'deepseek-reasoner-alpha-data-process',
+    'ds-chat': 'deepseek-chat-alpha-data-process',
 }
 
 models_aliases = {v: k for k, v in models.items()}

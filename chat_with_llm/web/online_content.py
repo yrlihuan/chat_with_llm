@@ -7,7 +7,7 @@ from chat_with_llm import config
 __all__ = ['OnlineContent', 'add_online_retriever', 'get_online_retriever', 'list_online_retrievers']
 
 class OnlineContent(ABC):
-    def __init__(self, name, description, params={}):
+    def __init__(self, name, description, **params):
         self.name = name
         self.description = description
         self.storage = ContentStorage_File(name)
@@ -162,7 +162,7 @@ def get_online_retriever(name, **params):
     if name not in all_online_retrievers:
         raise RuntimeError(f'Unknown online retriever: {name}')
     
-    return all_online_retrievers[name](params)
+    return all_online_retrievers[name](**params)
 
 def list_online_retrievers():
     return list(all_online_retrievers.keys())

@@ -12,8 +12,8 @@ class MRXWLB(online_content.OnlineContent):
     DESCRIPTION = '每日新闻联播'
     BASE_URL = 'https://cn.govopendata.com/xinwenlianbo/'
 
-    def __init__(self, params):
-        super().__init__(MRXWLB.NAME, MRXWLB.DESCRIPTION, params)
+    def __init__(self, **params):
+        super().__init__(MRXWLB.NAME, MRXWLB.DESCRIPTION, **params)
 
     def url2id(self, url):
         if not url.startswith(MRXWLB.BASE_URL):

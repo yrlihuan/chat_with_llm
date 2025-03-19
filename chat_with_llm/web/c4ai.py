@@ -12,8 +12,8 @@ class Crawl4AI(online_content.OnlineContent):
     NAME = 'crawl4ai'
     DESCRIPTION = '通用爬取器'
 
-    def __init__(self, params):
-        super().__init__(Crawl4AI.NAME, Crawl4AI.DESCRIPTION, params)
+    def __init__(self, **params):
+        super().__init__(Crawl4AI.NAME, Crawl4AI.DESCRIPTION, **params)
 
         if params.get('use_proxy', False):
             self.brower_cfg = crawl4ai.BrowserConfig(
@@ -28,7 +28,7 @@ class Crawl4AI(online_content.OnlineContent):
         self.generator = crawl4ai.DefaultMarkdownGenerator()
 
         # cache expire in hours
-        self.cache_expire = params.get('cache_expire', 24*7)
+        self.cache_expire = int(params.get('cache_expire', 24*7))
 
         self.time_base = dt.datetime.strptime('20250101', '%Y%m%d')
 
