@@ -28,6 +28,8 @@ models = {
     'deepseek-chat': 'deepseek-chat-alpha-data-process',
     'ds-reasoner': 'deepseek-reasoner-alpha-data-process',
     'ds-chat': 'deepseek-chat-alpha-data-process',
+    'doubao-1.5-pro': 'doubao-1.5-pro-256k-250115',
+    'abab6.5': 'abab6.5s-chat',
 }
 
 models_aliases = {v: k for k, v in models.items()}
@@ -37,7 +39,11 @@ model_query_delays = {
     'gemini-2.0-flash-thinking': 7,
 }
 
-def get_model(simple_name):
+def get_model(simple_name, fail_on_unknown=True):
+    if fail_on_unknown:
+        if simple_name not in models and simple_name not in set(models.values()):
+            raise ValueError(f'Unknown model name {simple_name}')
+        
     model_id = models.get(simple_name, simple_name)
     if model_id == '':
         model_id = simple_name # 重命名为空表示使用原始名称
@@ -51,14 +57,14 @@ def get_save_path(use_case):
 def get_model_query_delay(model_id_or_alias):
     return model_query_delays.get(model_id_or_alias, None) or model_query_delays.get(models_aliases.get(model_id_or_alias, ''), 0)
 
-def chat(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False, retries=10, throw_ex=True):
+def chat(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False, retries=3, throw_ex=True):
     response, reasoning = chat_impl(prompt, contents, model_id,
                                     use_case=use_case, save=save, sep=sep,
                                     prompt_follow_contents=prompt_follow_contents,
                                     retries=retries, throw_ex=throw_ex)
     return response
 
-def reason(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False, retries=10, throw_ex=True):
+def reason(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False, retries=3, throw_ex=True):
     response, reasoning = chat_impl(prompt, contents, model_id,
                                     use_case=use_case, save=save, sep=sep,
                                     prompt_follow_contents=prompt_follow_contents,
@@ -88,6 +94,7 @@ def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_con
         except OpenAIError as ex:
             if retry_cnt < retries:
                 print('openai api failed, retrying...')
+                print(ex)
                 time.sleep(min(5 * retry_cnt, 60))
                 retry_cnt += 1
                 continue

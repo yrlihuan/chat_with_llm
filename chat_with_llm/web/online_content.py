@@ -16,13 +16,8 @@ class OnlineContent(ABC):
         self.force_fetch = params.get('force_fetch', False)
         self.force_parse = params.get('force_parse', False)
         self.update_cache = params.get('update_cache', True)
+        self.batch_size = params.get('batch_size', 10)
 
-    """
-    url_or_id: url or site_id
-    force_fetch: force fetch from the website
-    force_parse: force parse the raw data
-    update_cache: update the saved data
-    """
     def retrieve(self, url_or_id):
         url, site_id = self.parse_url_id(url_or_id)
         key_raw = site_id + '.raw'
@@ -36,7 +31,11 @@ class OnlineContent(ABC):
                 raise RuntimeError(f'Cannot decide url from {url_or_id} and no cache found.')
 
         if self.force_fetch or not self.storage.has(key_raw):
-            fetch_results = self.fetch(url)
+            try:
+                fetch_results = self.fetch(url)
+            except Exception as e:
+                return None
+            
             if fetch_results is None:
                 return None
             
@@ -67,6 +66,13 @@ class OnlineContent(ABC):
                 return parsed
             else:
                 return self.load_parsed(site_id)
+            
+    def retrieve_many(self, urls_or_ids):
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=self.batch_size) as executor:
+            results = executor.map(self.retrieve, urls_or_ids)
+
+        return results
     
     @abstractmethod
     def url2id(self, url):

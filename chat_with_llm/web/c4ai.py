@@ -15,7 +15,17 @@ class Crawl4AI(online_content.OnlineContent):
     def __init__(self, **params):
         super().__init__(Crawl4AI.NAME, Crawl4AI.DESCRIPTION, **params)
 
-        if params.get('use_proxy', False):
+        # cache expire in hours
+        self.cache_expire = int(params.get('cache_expire', 24*7))
+        self.time_base = dt.datetime.strptime('20250101', '%Y%m%d')
+
+        # strip boilerplate content
+        self.opt_strip_boilerplate = params.get('strip_boilerplate', False)
+
+        self.opt_use_proxy = params.get('use_proxy', False)
+
+        self.generator = crawl4ai.DefaultMarkdownGenerator()
+        if self.opt_use_proxy:
             self.brower_cfg = crawl4ai.BrowserConfig(
                 headless=True,
                 proxy=config.get('OPTIONAL_PROXY'),
@@ -24,13 +34,6 @@ class Crawl4AI(online_content.OnlineContent):
             self.brower_cfg = crawl4ai.BrowserConfig(
                 headless=True,
             )
-
-        self.generator = crawl4ai.DefaultMarkdownGenerator()
-
-        # cache expire in hours
-        self.cache_expire = int(params.get('cache_expire', 24*7))
-
-        self.time_base = dt.datetime.strptime('20250101', '%Y%m%d')
 
     def url2id(self, url):
         parts = url.replace('https://', '').replace('http://', '').split('/')
@@ -65,7 +68,12 @@ class Crawl4AI(online_content.OnlineContent):
     def parse(self, url, raw):
         #print(url, len(raw))
         markdown_result = self.generator.generate_markdown(raw, base_url=url)
-        return markdown_result.raw_markdown
+
+        md = markdown_result.raw_markdown
+        if self.opt_strip_boilerplate:
+            md = self.strip_boilerplate(md)
+
+        return md
 
     async def async_fetch(self, url):
         async with crawl4ai.AsyncWebCrawler(config=self.brower_cfg) as crawler:
@@ -80,5 +88,58 @@ class Crawl4AI(online_content.OnlineContent):
         raw = result.cleaned_html
 
         return final_url, {}, raw
+    
+    def extract_links(self, s):
+        sb_lvl = 0 # square bracket level
+        rb_lvl = 0 # round bracket level
+        links = []
+
+        link_start = None
+        link_end = None
+        link_text = None
+        for p, c in enumerate(s):
+            if c == '[':
+                sb_lvl += 1
+                if sb_lvl == 1:
+                    link_start = p
+            elif c == ']':
+                sb_lvl = max(0, sb_lvl - 1)
+                if sb_lvl == 0 and link_start is not None:
+                    link_text = s[link_start+1:p]
+            elif c == '(' and sb_lvl == 0 and rb_lvl == 0 and link_start is not None:
+                rb_lvl += 1
+            elif c == ')' and sb_lvl == 0 and rb_lvl == 1:
+                link_end = p + 1
+                links.append((link_start, link_end, link_text))
+                link_start = None
+                link_end = None
+                link_text = None
+                rb_lvl = 0
+
+        return links
+
+    def strip_boilerplate(self, contents):
+        # 网页中包含大量的链接. 在这里我们尝试去掉这些链接
+
+        outputs = []
+        lines = contents.split('\n')
+        for l in lines:
+            links = self.extract_links(l)
+            link_length = sum([e-s for s, e, _ in links])
+            if link_length > 0.9 * len(l):
+                continue
+
+            l2 = ''
+            p = 0
+            for s, e, t in links:
+                l2 += l[p:s]
+                l2 += t
+                p = e
+                
+            l2 += l[p:]
+
+            outputs.append(l2)
+
+        return '\n'.join(outputs)
 
 online_content.add_online_retriever(Crawl4AI.NAME, Crawl4AI)
