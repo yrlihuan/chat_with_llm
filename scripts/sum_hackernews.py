@@ -89,6 +89,7 @@ if __name__ == "__main__":
 
     parser.add_argument('-m', '--model', type=str, default='gemini-2.0-pro', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', default='v1')
+    parser.add_argument('-c', '--min_comments', type=int, default=20, help='Minimum number of comments to consider reading the article')
     parser.add_argument('--llm_use_case', type=str, default='sum_hn', help='The use case for the llm model')
 
     args = parser.parse_args()
@@ -116,8 +117,10 @@ if __name__ == "__main__":
     
     articles = extract_articles(hn_news)
 
-    if len(articles) < 10:
-        print('A normal hackernews homepage should have 30 articles. aborting...')
+    articles = [article for article in articles if article['comments'] is not None and article['comments'] >= args.min_comments]
+
+    if len(articles) == 0:
+        print(f'No articles found with at least {args.min_comments} comments')
         exit(1)
 
     articles_contents = list(retriever.retrieve_many([article['link'] for article in articles]))
@@ -131,6 +134,9 @@ if __name__ == "__main__":
 
     #     print(contents)
 
+    # 按评论数排序
+    articles.sort(key=lambda x: -x['comments'])
+
     contents = ''
     for item in articles:
         if not item['content']:
@@ -142,7 +148,12 @@ if __name__ == "__main__":
         contents += f'{item["title"]} ({item["comments"]} comments)\n'
         contents += item['content'] + '\n'
 
-    print(f'数据准备完毕，开始使用模型{model_id}进行分析...\n')
+    print(f'共{len(articles)}篇文章如下:')
+    for p, article in enumerate(articles):
+        print(f'{article["title"]} ({article["link"]}) ({article["comments"]} comments)')
+
+    print(f'开始使用模型{model_id}进行分析...\n')
+
     message = llm.chat(prompt=prompt, contents=contents, model_id=model_id,
                        use_case=args.llm_use_case, save=True)
     print(message)
