@@ -16,12 +16,27 @@ from chat_with_llm import storage
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Summarize a youtube video subtitle')
 
+
+    prompts = {
+        'v1': '下一行之后是一个视频的字幕内容，请根据字幕生成中文(Chinese)的内容概括，不限字数，'
+              '请涵盖视频中的具有洞察力的观点和论据。在完成概括之后，最后一行输出一个简短版本的视频标题。',
+        'v2': '下一行之后是一个视频的字幕内容, 请根据字幕生成中文(Chinese)的内容概括, 不限字数, '
+              '请涵盖视频中的具有洞察力的观点和论据. 在开始概况时, 先输出视频的地址([视频地址](url)这种格式), '
+              '在完成概括之后, 最后一行输出一个简短版本的视频标题.',
+    }
+
     parser.add_argument('youtube_link', type=str, help='The youtube video link')
-    parser.add_argument('-m', '--model', type=str, default='gemini-2.0-pro-exp-02-05', help='The model to use for generating summary')
-    parser.add_argument('-p', '--prompt', type=str, default='下一行之后是一个视频的字幕内容，请根据字幕生成中文(Chinese)的内容概括，不限字数，请涵盖视频中的具有洞察力的观点和论据。在完成概括之后，最后一行输出一个简短版本的视频标题。', help='The prompt to use for generating summary')
+    parser.add_argument('-m', '--model', type=str, default='gemini-2.0-pro', help='The model to use for generating summary')
+    parser.add_argument('-p', '--prompt', type=str, default='v2', help='The prompt to use for generating summary')
 
     args = parser.parse_args()
+
     model_id = llm.get_model(args.model)
+
+    if args.prompt in prompts:
+        prompt = prompts[args.prompt]
+    else:
+        prompt = args.prompt
 
     # 判断字符串是否是16进制
     def ishex(s):
@@ -89,13 +104,19 @@ if __name__ == '__main__':
                 'japanese', 'japanese_auto',
                 'korean', 'korean_auto',
                 'french', 'french_auto']
+    contents = None
     for p in priority:
         for sub in subs:
             if sub[0] == p:
                 contents = sub[2]
+                break
+
+    assert contents is not None, 'subtitle downloader returns a list of subtitles, but no subtitle is selected'
     
     print(f'Parsing subtitle using {model_id}.')
-    summary = llm.chat(args.prompt, contents, model_id, use_case='youtube_subtitle', save=True)
+    contents_url = f'视频地址: {youtube_link}\n'
+    message = contents_url + contents
+    summary = llm.chat(prompt, message, model_id, use_case='sum_youtube', save=True)
     print(summary)
 
     # 保存结果
@@ -128,7 +149,7 @@ if __name__ == '__main__':
         storage_obj = storage.get_storage('video_summary', None)
         
         contents = f'video: {args.youtube_link}\n'
-        contents += f'prompt: {args.prompt}\n\n'
+        contents += f'prompt: {prompt}\n\n'
         contents += summary
         contents += '\n'
 

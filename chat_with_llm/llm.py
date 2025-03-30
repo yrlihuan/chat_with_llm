@@ -22,6 +22,7 @@ models = {
     'gemini-2.0-flash': '',
     'gemini-2.0-flash-thinking': 'gemini-2.0-flash-thinking-exp-01-21',
     'gemini-2.0-pro': 'gemini-2.0-pro-exp-02-05',
+    #'gemini-2.5-pro': 'gemini-2.5-pro-exp-03-25',
     'grok-2.0-pro': '',
     'grok-2.0-latest': '',
     'grok-beta': '',

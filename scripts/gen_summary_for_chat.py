@@ -14,46 +14,47 @@ if __name__ == '__main__':
     }
 
     parser = argparse.ArgumentParser(description='Generate summary for chat history')
-    parser.add_argument('-m', '--model', type=str, default='gpt-4o', help='The model to use for generating summary')
+    parser.add_argument('-m', '--model', type=str, default='ds-chat', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', type=str, default='v3')
-    parser.add_argument('-u', '--llm_use_case', type=str, default='sum_hn')
+    parser.add_argument('-u', '--llm_use_cases', type=lambda s: s.split(','), default=[])
 
     args = parser.parse_args()
 
-    storage_obj = storage.get_storage('chat_history', args.llm_use_case)
     if args.prompt in prompts:
         prompt = prompts[args.prompt]
     else:
         prompt = args.prompt
 
-    keys = storage_obj.list()
-    conversations = set()
-    summaries = set()
+    for use_case in args.llm_use_cases:
+        storage_obj = storage.get_storage('chat_history', use_case)
+        keys = storage_obj.list()
+        conversations = set()
+        summaries = set()
 
-    for key in keys:
-        if key.endswith('.input.txt'):
-            continue
-        elif key.endswith('.summary.txt'):
-            summaries.add(key[:-len('.summary.txt')])
-        elif key.endswith('.txt'):
-            conversations.add(key[:-len('.txt')])
-            
-    to_be_summarized = conversations - summaries
-    print(f'{len(to_be_summarized)}个聊天记录待摘要')
+        for key in keys:
+            if key.endswith('.input.txt'):
+                continue
+            elif key.endswith('.summary.txt'):
+                summaries.add(key[:-len('.summary.txt')])
+            elif key.endswith('.txt'):
+                conversations.add(key[:-len('.txt')])
+                
+        to_be_summarized = conversations - summaries
+        print(f'{use_case}: {len(to_be_summarized)}个聊天记录待摘要')
 
-    model_id = llm.get_model(args.model)
-    for key in to_be_summarized:
-        print(f'正在处理 {key}...')
-        contents = storage_obj.load(key + '.txt')
+        model_id = llm.get_model(args.model)
+        for key in to_be_summarized:
+            print(f'正在处理 {key}...')
+            contents = storage_obj.load(key + '.txt')
 
-        answer = llm.chat(
-            prompt=prompt,
-            contents=contents,
-            model_id=model_id,
-            use_case='gen_conversation_summary',
-            save=False,
-            retries=1,
-            throw_ex=False
-        )
+            answer = llm.chat(
+                prompt=prompt,
+                contents=contents,
+                model_id=model_id,
+                use_case='gen_conversation_summary',
+                save=False,
+                retries=1,
+                throw_ex=False
+            )
 
-        storage_obj.save(key + '.summary.txt', answer.strip() + '\n')
+            storage_obj.save(key + '.summary.txt', answer.strip() + '\n')
