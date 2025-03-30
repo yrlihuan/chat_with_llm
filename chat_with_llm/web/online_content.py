@@ -34,6 +34,7 @@ class OnlineContent(ABC):
             try:
                 fetch_results = self.fetch(url)
             except Exception as e:
+                print(e)
                 return None
             
             if fetch_results is None:

@@ -84,12 +84,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Summarize hackernews daily posts.')
 
     candidate_prompts = {
-        'v1': '以下是今天hackernews的文章. 文章之间用长--连线分割. 请根据内容以及每篇文章的评论数总结今天的热点, 以及热点文章中的新颖观点. 输出中文, 不限字数, 可以列举多个热点。',
+        'v1': '以下是今天hackernews的文章. 文章之间用长--连线分割. 请根据内容以及每篇文章的评论数总结今天的热点, '
+              '以及热点文章中的新颖观点. 输出中文, 不限字数, 可以列举多个热点。',
+        'v2': '以下是今天hackernews的文章. 文章之间用长--连线分割. 请根据内容以及每篇文章的评论数以及你的理解, '
+              '选取三到五篇最有新意和知识性的文章, 总结其观点. 每个文章输出的时候先输出文章标题(带链接)'
+              '以及评论数(并附带评论的链接). 输出中文, 不限字数. ',
     }
 
     parser.add_argument('-m', '--model', type=str, default='gemini-2.0-pro', help='The model to use for generating summary')
-    parser.add_argument('-p', '--prompt', default='v1')
-    parser.add_argument('-c', '--min_comments', type=int, default=20, help='Minimum number of comments to consider reading the article')
+    parser.add_argument('-p', '--prompt', default='v2')
+    parser.add_argument('-c', '--min_comments', type=int, default=30, help='Minimum number of comments to consider reading the article')
     parser.add_argument('--llm_use_case', type=str, default='sum_hn', help='The use case for the llm model')
 
     args = parser.parse_args()
@@ -145,7 +149,8 @@ if __name__ == "__main__":
         if contents:
             contents += '-' * 80 + '\n'
 
-        contents += f'{item["title"]} ({item["comments"]} comments)\n'
+        contents += f'({item["title"]})[{item["link"]}]'
+        contents += f'({item["comments"]} comments)[{item["comments_link"]}]\n'
         contents += item['content'] + '\n'
 
     print(f'共{len(articles)}篇文章如下:')
