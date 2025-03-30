@@ -4,6 +4,7 @@ import time
 from openai import OpenAI, OpenAIError
 
 from chat_with_llm import config
+from chat_with_llm import storage
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -49,6 +50,13 @@ def get_model(simple_name, fail_on_unknown=True):
         model_id = simple_name # 重命名为空表示使用原始名称
 
     return model_id
+
+llm_storages = {}
+def get_storage(use_case):
+    if use_case not in llm_storages:
+        llm_storages[use_case] = storage.get_storage('chat_history', use_case)
+    
+    return llm_storages[use_case]
 
 def get_save_path(use_case):
     path = os.path.join(config.get('CHAT_HISTORY_DIR'), use_case)
@@ -117,13 +125,11 @@ def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_con
         reasoning = None
 
     if save:
-        use_case_dir = get_save_path(use_case)
-        if not os.path.exists(use_case_dir):
-            os.makedirs(use_case_dir)
+        storage = get_storage(use_case)
 
         timestamp = time.strftime('%Y%m%d_%H%M%S')
-        filename = f'{use_case_dir}/{timestamp}_{model_id.replace("/", "_").replace(":", "_")}.txt'
-        while os.path.exists(filename):
+        filename = f'{timestamp}_{model_id.replace("/", "_").replace(":", "_")}.txt'
+        while storage.has(filename):
             if filename.endswith(f'{model_id}.txt'):
                 filename = filename[:-len('.txt')] + '_1.txt'
             else:
@@ -135,10 +141,7 @@ def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_con
         data += f'reasoning:\n{reasoning}\n' if reasoning else ''
         data += f'response:\n{response}\n'
 
-        with open(filename, 'w') as fout:
-            fout.write(data)
-
-        with open(filename[:-len('.txt')] + '.input.txt', 'w') as fout:
-            fout.write(contents)
+        storage.save(filename, data)
+        storage.save(filename[:-len('.txt')] + '.input.txt', contents)
                                                                   
     return response, reasoning

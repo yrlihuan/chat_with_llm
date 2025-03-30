@@ -2,7 +2,7 @@ import os
 import json
 from abc import ABC, abstractmethod
 
-from chat_with_llm import config
+from chat_with_llm import storage
 
 __all__ = ['OnlineContent', 'add_online_retriever', 'get_online_retriever', 'list_online_retrievers']
 
@@ -10,7 +10,7 @@ class OnlineContent(ABC):
     def __init__(self, name, description, **params):
         self.name = name
         self.description = description
-        self.storage = ContentStorage_File(name)
+        self.storage = storage.get_storage('web_cache', name)
         self.params = params
 
         self.force_fetch = params.get('force_fetch', False)
@@ -125,38 +125,6 @@ class OnlineContent(ABC):
 
         if parsed is not None:
             self.storage.save(site_id + '.parsed', parsed)
-
-    def list_cache(self):
-        return self.storage.list()
-
-class ContentStorage_File():
-    def __init__(self, identifier):
-        storage_base = config.get('WEB_CACHE_DIR')
-        storage_path = os.path.join(storage_base, identifier)
-        self.storage_path = storage_path
-        if not os.path.exists(storage_path):
-            os.makedirs(storage_path)
-
-    def load(self, key):
-        path = os.path.join(self.storage_path, key)
-        if os.path.exists(path):
-            return open(path, 'r').read()
-        else:
-            return None
-    
-    def save(self, key, value):
-        return open(os.path.join(self.storage_path, key), 'w').write(value)
-    
-    def has(self, key):
-        return os.path.exists(os.path.join(self.storage_path, key))
-    
-    def list(self):
-        keys = []
-        for f in os.listdir(self.storage_path):
-            if f.endswith('.parsed'):
-                keys.append(f[:-len('.parsed')])
-
-        return keys
     
 all_online_retrievers = {}
 def add_online_retriever(name, retriever_class):
