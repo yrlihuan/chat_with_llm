@@ -26,7 +26,13 @@ class StorageBase(ABC):
 
 class ContentStorage_File(StorageBase):
     def __init__(self, storage_base, identifier):
-        storage_path = os.path.join(storage_base, identifier)
+        super().__init__(identifier)
+
+        if identifier:
+            storage_path = os.path.join(storage_base, identifier)
+        else:
+            storage_path = storage_base
+
         self.storage_path = storage_path
         if not os.path.exists(storage_path):
             os.makedirs(storage_path)
@@ -53,14 +59,19 @@ class ContentStorage_File(StorageBase):
     
 def get_storage(storage_type, identifier, storage_class='file'):
     if storage_class == 'file':
+        storage_base = config.get('STORAGE_BASE_DIR')
         if storage_type == 'web_cache':
-            storage_base = config.get('WEB_CACHE_DIR')
-            return ContentStorage_File(storage_base, identifier)
+            sub_dir = 'web_cache'
         elif storage_type == 'chat_history':
-            storage_base = config.get('CHAT_HISTORY_DIR')
-            return ContentStorage_File(storage_base, identifier)
+            sub_dir = 'chat_history'
+        elif storage_type == 'video_summary':
+            sub_dir = 'video_summary'
+        elif storage_type == 'subtitle_cache':
+            sub_dir = 'subtitle_cache'
         else:
             raise ValueError(f'Unknown storage type: {storage_type}')
+
+        return ContentStorage_File(os.path.join(storage_base, sub_dir), identifier)
     else:
         raise ValueError(f'Unknown storage class: {storage_class}')
     

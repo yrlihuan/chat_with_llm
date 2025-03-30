@@ -27,6 +27,8 @@ def retrive_subtitles(metadata):
 
     support_langs = {
         'chinese': 'chinese',
+        'chinese (simplified)': 'chinese',
+        'chinese (traditional)': 'chinese',
         'english': 'english',
         'japanese': 'japanese',
         'korean': 'korean',

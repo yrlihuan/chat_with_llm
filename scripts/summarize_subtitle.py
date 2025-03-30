@@ -11,14 +11,14 @@ import downsub
 import argparse
 
 from chat_with_llm import llm
-from chat_with_llm import config
+from chat_with_llm import storage
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Summarize a youtube video subtitle')
 
     parser.add_argument('youtube_link', type=str, help='The youtube video link')
-    parser.add_argument('--model', type=str, default='gemini-2.0-pro-exp-02-05', help='The model to use for generating summary')
-    parser.add_argument('--prompt', type=str, default='下一行之后是一个视频的字幕内容，请根据字幕生成中文(Chinese)的内容概括，不限字数，请涵盖视频中的具有洞察力的观点和论据。在完成概括之后，最后一行输出一个简短版本的视频标题。', help='The prompt to use for generating summary')
+    parser.add_argument('-m', '--model', type=str, default='gemini-2.0-pro-exp-02-05', help='The model to use for generating summary')
+    parser.add_argument('-p', '--prompt', type=str, default='下一行之后是一个视频的字幕内容，请根据字幕生成中文(Chinese)的内容概括，不限字数，请涵盖视频中的具有洞察力的观点和论据。在完成概括之后，最后一行输出一个简短版本的视频标题。', help='The prompt to use for generating summary')
 
     args = parser.parse_args()
     model_id = llm.get_model(args.model)
@@ -42,16 +42,13 @@ if __name__ == '__main__':
         youtube_id = args.youtube_link.split('=')[-1]
         youtube_id_md5 = hashlib.md5(youtube_id.encode()).hexdigest()[:8]
 
-    sub_cache_dir = config.get('SUBTITLE_CACHE_DIR')
-    if not os.path.exists(sub_cache_dir):
-        os.makedirs(sub_cache_dir)
+    subtitle_storage = storage.get_storage('subtitle_cache', None)
 
     if youtube_link is None:
-        url_cache = os.path.join(sub_cache_dir, f'{youtube_id_md5}.url')
-        if os.path.exists(url_cache):
-            with open(url_cache, 'r') as fin:
-                youtube_link = fin.read().strip()
-                youtube_id = youtube_link.split('=')[-1]
+        key = f'{youtube_id_md5}.url'
+        if subtitle_storage.has(key):
+            youtube_link = subtitle_storage.get(key)
+            youtube_id = youtube_link.split('=')[-1]
 
     cache_candidates = [f'{youtube_id_md5}.chinese.txt',
                         f'{youtube_id_md5}.english.txt',
@@ -66,10 +63,9 @@ if __name__ == '__main__':
 
     subs = []
     for cache_file in cache_candidates:
-        if os.path.exists(os.path.join(sub_cache_dir, cache_file)):
-            with open(os.path.join(sub_cache_dir, cache_file), 'r') as fin:
-                subs.append((cache_file.split('.')[1], 'txt', fin.read()))
-
+        if subtitle_storage.has(cache_file):
+            subs.append((cache_file.split('.')[1], 'txt', subtitle_storage.load(cache_file)))
+            
     if len(subs) == 0:
         print("Downloading subtitle file for video: %s" % args.youtube_link)
         metadata = downsub.retrive_metadata(args.youtube_link)
@@ -79,14 +75,13 @@ if __name__ == '__main__':
             sys.exit(1)
 
         for lang, fmt, content in subs:
-            with open(os.path.join(sub_cache_dir, f'{youtube_id_md5}.{lang}.{fmt}'), 'w') as fout:
-                fout.write(content)
+            key = f'{youtube_id_md5}.{lang}.{fmt}'
+            subtitle_storage.save(key, content)
 
-        with open(os.path.join(sub_cache_dir, f'{youtube_id_md5}.url'), 'w') as fout:
-            fout.write(youtube_link)
+        subtitle_storage.save(f'{youtube_id_md5}.url', youtube_link)
 
-        with open(os.path.join(sub_cache_dir, f'{youtube_id_md5}.metadata.json'), 'w') as fout:
-            json.dump(metadata['data'], fout, indent=4)
+        metadata_str = json.dumps(metadata, indent=4)
+        subtitle_storage.save(f'{youtube_id_md5}.metadata', metadata_str)
 
     # 选择字幕文件
     priority = ['chinese', 'english',
@@ -130,9 +125,12 @@ if __name__ == '__main__':
         model_save_name = model_id.replace('/', '_')
 
         filename = f'{youtube_id_md5}_{video_title}_{model_save_name}.txt'
-        save_dir = config.get('VIDEO_SUMMARY_DIR')
-        with open(os.path.join(save_dir, filename), 'w') as fout:
-            fout.write(f'video: {args.youtube_link}\n')
-            fout.write(f'prompty: {args.prompt}\n\n')
-            fout.write(summary)
+        storage = storage.get_storage('video_summary', None)
+        
+        contents = f'video: {args.youtube_link}\n'
+        contents += f'prompt: {args.prompt}\n\n'
+        contents += summary
+        contents += '\n'
+
+        storage.save(filename, contents)
 

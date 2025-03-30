@@ -38,14 +38,14 @@ if __name__ == '__main__':
         
         parsed = retriever.retrieve(url)
         if parsed:
-            contents += f'{key_date}日新闻联播文字版\n{parsed}\n'
+            contents += f'{key_date}日新闻联播\n\n{parsed}\n'
         else:
             print(f'Retrieving {key_date} failed.')
             continue
 
         message = llm.chat(
             prompt=prompt, contents=contents, model_id=model_id,
-            use_case=args.llm_use_case, save=False,
+            use_case=args.llm_use_case, save=True,
             prompt_follow_contents=args.prompt_follow_contents,
             retries=3, throw_ex=False)
         
@@ -58,18 +58,5 @@ if __name__ == '__main__':
         delay = llm.get_model_query_delay(args.model)
         if delay:
             time.sleep(delay)
-
-    output_dir = llm.get_save_path(args.llm_use_case)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    print(outputs)
-    timestamp = time.strftime('%Y%m%d_%H%M%S')
-    filename = f'{timestamp}_{model_id}_{args.date}_{args.step}_{args.n}.txt'
-    filename = filename.replace(':', '_').replace('/', '_')
-    output_file = os.path.join(output_dir, filename)
-
-    with open(output_file, 'w') as f:
-        f.write(outputs)
     
     

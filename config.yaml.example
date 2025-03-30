@@ -5,14 +5,5 @@ OPENAI_API_BASE: "https://api.openai.com/v1"
 # downsub api
 DOWNSUB_API_KEY: "kkkhhhjjj"
 
-# web cache
-WEB_CACHE_DIR: "~/.chat_with_llm/web_cache"
-
-# chat api history
-CHAT_HISTORY_DIR: "~/.chat_with_llm/chat_history"
-
-# video summary history
-VIDEO_SUMMARY_DIR: "~/.chat_with_llm/video_summary"
-
-# subtitles cache
-SUBTITLES_CACHE_DIR: "~/.chat_with_llm/subtitles_cache"
+# storage base dir
+STORAGE_BASE_DIR: "~/.chat_with_llm"

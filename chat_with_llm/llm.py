@@ -8,7 +8,7 @@ from chat_with_llm import storage
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 
-__all__ = ['get_model', 'get_save_path', 'get_model_query_delay', 'chat', 'reason']
+__all__ = ['get_model', 'get_storage', 'get_model_query_delay', 'chat', 'reason']
 
 models = {
     '4o': 'or-openai/chatgpt-4o-latest',
@@ -57,10 +57,6 @@ def get_storage(use_case):
         llm_storages[use_case] = storage.get_storage('chat_history', use_case)
     
     return llm_storages[use_case]
-
-def get_save_path(use_case):
-    path = os.path.join(config.get('CHAT_HISTORY_DIR'), use_case)
-    return path
 
 def get_model_query_delay(model_id_or_alias):
     return model_query_delays.get(model_id_or_alias, None) or model_query_delays.get(models_aliases.get(model_id_or_alias, ''), 0)
