@@ -125,12 +125,12 @@ if __name__ == '__main__':
         model_save_name = model_id.replace('/', '_')
 
         filename = f'{youtube_id_md5}_{video_title}_{model_save_name}.txt'
-        storage = storage.get_storage('video_summary', None)
+        storage_obj = storage.get_storage('video_summary', None)
         
         contents = f'video: {args.youtube_link}\n'
         contents += f'prompt: {args.prompt}\n\n'
         contents += summary
         contents += '\n'
 
-        storage.save(filename, contents)
+        storage_obj.save(filename, contents)
 

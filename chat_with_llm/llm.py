@@ -11,6 +11,7 @@ CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 __all__ = ['get_model', 'get_storage', 'get_model_query_delay', 'chat', 'reason']
 
 models = {
+    'gpt-4o': 'or-openai/chatgpt-4o-latest',
     '4o': 'or-openai/chatgpt-4o-latest',
     'o1': 'lobechat-o1-2024-12-17',
     'o1-mini': 'or-openai/o1-mini-2024-09-12',
@@ -121,11 +122,11 @@ def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_con
         reasoning = None
 
     if save:
-        storage = get_storage(use_case)
+        storage_obj = get_storage(use_case)
 
         timestamp = time.strftime('%Y%m%d_%H%M%S')
         filename = f'{timestamp}_{model_id.replace("/", "_").replace(":", "_")}.txt'
-        while storage.has(filename):
+        while storage_obj.has(filename):
             if filename.endswith(f'{model_id}.txt'):
                 filename = filename[:-len('.txt')] + '_1.txt'
             else:
@@ -137,7 +138,7 @@ def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_con
         data += f'reasoning:\n{reasoning}\n' if reasoning else ''
         data += f'response:\n{response}\n'
 
-        storage.save(filename, data)
-        storage.save(filename[:-len('.txt')] + '.input.txt', contents)
+        storage_obj.save(filename, data)
+        storage_obj.save(filename[:-len('.txt')] + '.input.txt', contents)
                                                                   
     return response, reasoning
