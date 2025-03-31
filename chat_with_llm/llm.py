@@ -63,21 +63,24 @@ def get_storage(use_case):
 def get_model_query_delay(model_id_or_alias):
     return model_query_delays.get(model_id_or_alias, None) or model_query_delays.get(models_aliases.get(model_id_or_alias, ''), 0)
 
-def chat(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False, retries=3, throw_ex=True):
-    response, reasoning = chat_impl(prompt, contents, model_id,
-                                    use_case=use_case, save=save, sep=sep,
-                                    prompt_follow_contents=prompt_follow_contents,
-                                    retries=retries, throw_ex=throw_ex)
+def chat(prompt, contents, model_id, **kwargs):
+    response, reasoning = chat_impl(prompt, contents, model_id, **kwargs)
     return response
 
-def reason(prompt, contents, model_id, use_case='default', save=True, sep='\n', prompt_follow_contents=False, retries=3, throw_ex=True):
-    response, reasoning = chat_impl(prompt, contents, model_id,
-                                    use_case=use_case, save=save, sep=sep,
-                                    prompt_follow_contents=prompt_follow_contents,
-                                    retries=retries, throw_ex=throw_ex)
+def reason(prompt, contents, model_id, **kwargs):
+    response, reasoning = chat_impl(prompt, contents, model_id, **kwargs)
     return response, reasoning
 
-def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_contents, retries, throw_ex):
+def chat_impl(prompt,
+              contents,
+              model_id,
+              use_case='default',
+              save=True,
+              save_date=None,
+              sep='\n',
+              prompt_follow_contents=False,
+              retries=3,
+              throw_ex=True):
     client = OpenAI(
         api_key=config.get("OPENAI_API_KEY"),
         base_url=config.get('OPENAI_API_BASE'),
@@ -125,14 +128,23 @@ def chat_impl(prompt, contents, model_id, use_case, save, sep, prompt_follow_con
     if save:
         storage_obj = get_storage(use_case)
 
-        timestamp = time.strftime('%Y%m%d_%H%M%S')
-        filename = f'{timestamp}_{model_id.replace("/", "_").replace(":", "_")}.txt'
-        while storage_obj.has(filename):
-            if filename.endswith(f'{model_id}.txt'):
-                filename = filename[:-len('.txt')] + '_1.txt'
-            else:
-                filename_parts = filename.split('_')
-                filename = '_'.join(filename_parts[:-1]) + f'_{int(filename_parts[-1]) + 1}.txt'
+        model_save_name = model_id.replace("/", "_").replace(":", "_")
+        if save_date is None:
+            timestamp = time.strftime('%Y%m%d_%H%M%S')
+            filename = f'{timestamp}_{model_save_name}.txt'
+            while storage_obj.has(filename):
+                if filename.endswith(f'{model_id}.txt'):
+                    filename = filename[:-len('.txt')] + '_1.txt'
+                else:
+                    filename_parts = filename.split('_')
+                    filename = '_'.join(filename_parts[:-1]) + f'_{int(filename_parts[-1]) + 1}.txt'
+        else:
+            date_seq = 0
+            filename = f'{save_date}_{date_seq:06d}_{model_save_name}.txt'
+            while storage_obj.has(filename):
+                date_seq += 1
+                assert date_seq < 1000000, f'too many files for {save_date}'
+                filename = f'{save_date}_{date_seq:06d}_{model_save_name}.txt'
 
         data = f'model: {model_id}\n'
         data += f'prompt:\n{prompt}\n'

@@ -6,8 +6,7 @@ class Config():
         # load config from config.yaml
         config_candidates = [os.path.expanduser('~/.chat_with_llm/config.yaml'),
                              os.path.join(os.path.dirname(__file__), '..', 'config.yaml'),
-                             'config.yaml',
-                             'config.yaml.example']
+                             'config.yaml',]
         for config_file in config_candidates:
             if os.path.exists(config_file):
                 self.cfg = yaml.load(open(config_file), yaml.FullLoader)
