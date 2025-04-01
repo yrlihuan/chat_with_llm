@@ -16,7 +16,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate summary for chat history')
     parser.add_argument('-m', '--model', type=str, default='ds-chat', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', type=str, default='v3')
-    parser.add_argument('-u', '--llm_use_cases', type=lambda s: s.split(','), default=[])
+    parser.add_argument('-u', '--use_cases', type=lambda s: s.split(','), default=[])
 
     args = parser.parse_args()
 
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     else:
         prompt = args.prompt
 
-    for use_case in args.llm_use_cases:
+    for use_case in args.use_cases:
         storage_obj = storage.get_storage('chat_history', use_case)
         keys = storage_obj.list()
         conversations = set()

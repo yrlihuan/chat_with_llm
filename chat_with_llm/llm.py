@@ -131,20 +131,16 @@ def chat_impl(prompt,
         model_save_name = model_id.replace("/", "_").replace(":", "_")
         if save_date is None:
             timestamp = time.strftime('%Y%m%d_%H%M%S')
-            filename = f'{timestamp}_{model_save_name}.txt'
-            while storage_obj.has(filename):
-                if filename.endswith(f'{model_id}.txt'):
-                    filename = filename[:-len('.txt')] + '_1.txt'
-                else:
-                    filename_parts = filename.split('_')
-                    filename = '_'.join(filename_parts[:-1]) + f'_{int(filename_parts[-1]) + 1}.txt'
         else:
-            date_seq = 0
-            filename = f'{save_date}_{date_seq:06d}_{model_save_name}.txt'
-            while storage_obj.has(filename):
-                date_seq += 1
-                assert date_seq < 1000000, f'too many files for {save_date}'
-                filename = f'{save_date}_{date_seq:06d}_{model_save_name}.txt'
+            timestamp = time.strftime(f'{save_date}_%H%M%S')
+            
+        filename = f'{timestamp}_{model_save_name}.txt'
+        while storage_obj.has(filename):
+            if filename.endswith(f'{model_id}.txt'):
+                filename = filename[:-len('.txt')] + '@1.txt'
+            else:
+                filename_parts = filename.split('_')
+                filename = '_'.join(filename_parts[:-1]) + f'@{int(filename_parts[-1]) + 1}.txt'
 
         data = f'model: {model_id}\n'
         data += f'prompt:\n{prompt}\n'
