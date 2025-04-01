@@ -40,12 +40,15 @@ if __name__ == '__main__':
 
     retriever = oc.get_online_retriever('mrxwlb', date_end=args.date)
     urls = retriever.list(args.n * args.step)
+    date_urls = [(retriever.url2id(url), url) for url in urls]
+    date_urls.sort(key=lambda x: x[0], reverse=True)
+    urls = [url for _, url in date_urls[::args.step]]
     
     outputs = ''
     outputs += prompt + '\n\n'
 
     cur_date = time.strftime('%Y%m%d', time.localtime())
-    for url in tqdm(urls[args.step-1::args.step]):
+    for url in tqdm(urls):
         key_date = retriever.url2id(url)
         contents = ''
         
