@@ -60,18 +60,8 @@ class ContentStorage_File(StorageBase):
 def get_storage(storage_type, identifier, storage_class='file'):
     if storage_class == 'file':
         storage_base = config.get('STORAGE_BASE_DIR')
-        if storage_type == 'web_cache':
-            sub_dir = 'web_cache'
-        elif storage_type == 'chat_history':
-            sub_dir = 'chat_history'
-        elif storage_type == 'video_summary':
-            sub_dir = 'video_summary'
-        elif storage_type == 'subtitle_cache':
-            sub_dir = 'subtitle_cache'
-        else:
-            raise ValueError(f'Unknown storage type: {storage_type}')
-
-        return ContentStorage_File(os.path.join(storage_base, sub_dir), identifier)
+        assert storage_type in ['chat_history', 'web_cache', 'subtitle_cache', 'video_summary'], f'Unknown storage type: {storage_type}'
+        return ContentStorage_File(os.path.join(storage_base, storage_type), identifier)
     else:
         raise ValueError(f'Unknown storage class: {storage_class}')
     
