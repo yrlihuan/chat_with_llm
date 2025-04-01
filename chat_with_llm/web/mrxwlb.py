@@ -54,7 +54,7 @@ class MRXWLB(online_content.OnlineContent):
             return None
 
         metadata = {}
-        if response.headers['Last-Modified']:
+        if 'Last-Modifed' in response.headers:
             metadata['last-modified'] = response.headers['Last-Modified']
 
         raw = response.text

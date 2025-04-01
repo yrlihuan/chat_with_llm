@@ -21,7 +21,7 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--model', type=str, default='gemini-2.0-pro', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', default='v2')
     parser.add_argument('--prompt_follow_contents', type=lambda s: s.lower() == 'true' or s == '1', default=False, help='Whether to follow the contents after the prompt')
-    parser.add_argument('--llm_use_case', type=str, default='xwlb_each_day', help='The use case for the llm model')
+    parser.add_argument('--llm_use_case', type=str, default='sum_xwlb', help='The use case for the llm model')
 
     args = parser.parse_args()
 
