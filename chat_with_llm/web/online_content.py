@@ -83,7 +83,7 @@ class OnlineContent(ABC):
     def fetch_many(self, urls_or_ids):
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
-            results = executor.map(self.fetch_safe, urls_or_ids)
+            results = executor.map(self.safe_fetch, urls_or_ids)
 
         return list(results)
     
