@@ -3,6 +3,7 @@ import json
 from abc import ABC, abstractmethod
 
 from chat_with_llm import storage
+from chat_with_llm import config
 
 __all__ = ['OnlineContent', 'add_online_retriever', 'get_online_retriever', 'list_online_retrievers']
 
@@ -16,7 +17,7 @@ class OnlineContent(ABC):
         self.force_fetch = params.get('force_fetch', False)
         self.force_parse = params.get('force_parse', False)
         self.update_cache = params.get('update_cache', True)
-        self.batch_size = params.get('batch_size', 10)
+        self.batch_size = params.get('batch_size', config.get('ONLINE_CONTENT_WORKERS', 2))
 
     def retrieve(self, url_or_id):
         url, site_id = self.parse_url_id(url_or_id)
