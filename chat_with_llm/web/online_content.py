@@ -39,7 +39,7 @@ class OnlineContent(ABC):
                     raise RuntimeError(f'Cannot decide url from {url_or_id} and no cache found.')
 
             if self.force_fetch or not self.storage.has(key_raw):
-                to_be_fetched.append((ind, url))
+                to_be_fetched.append((ind, url, site_id))
                 rets.append(None) # placeholder
             else:
                 if self.force_parse or not self.storage.has(key_parsed):
@@ -53,8 +53,8 @@ class OnlineContent(ABC):
                     rets.append(self.load_parsed(site_id))
 
         if to_be_fetched:
-            fetch_results = self.fetch_many([url for _, url in to_be_fetched])
-            for (ind, url), r in zip(to_be_fetched, fetch_results):
+            fetch_results = self.fetch_many([url for _, url, _ in to_be_fetched])
+            for (ind, url, site_id), r in zip(to_be_fetched, fetch_results):
                 if r is None:
                     rets[ind] = None
                     continue
