@@ -157,9 +157,11 @@ class AsyncOnlineContent(OnlineContent):
         super().__init__(name, description, **params)
         self.loop = params.get('loop', None)
 
-    def fetch_many(self, url):
-        return asyncio.run(self.async_fetch_many(url))
+    def fetch_many(self, urls):
+        return asyncio.run(self.async_fetch_many(urls))
 
+    # by default, use async io.Semaphore to limit the number of concurrent requests
+    # subclass can override this to use other methods
     async def async_fetch_many(self, urls_or_ids):
         asyncio.Semaphore(self.num_workers)
         tasks = [self.async_fetch(url) for url in urls_or_ids]

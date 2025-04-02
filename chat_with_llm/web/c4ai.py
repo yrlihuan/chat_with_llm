@@ -26,12 +26,12 @@ class Crawl4AI(online_content.AsyncOnlineContent):
 
         self.generator = crawl4ai.DefaultMarkdownGenerator()
         if self.opt_use_proxy:
-            self.brower_cfg = crawl4ai.BrowserConfig(
+            self.browser_config = crawl4ai.BrowserConfig(
                 headless=True,
                 proxy=config.get('OPTIONAL_PROXY'),
             )
         else:
-            self.brower_cfg = crawl4ai.BrowserConfig(
+            self.browser_config = crawl4ai.BrowserConfig(
                 headless=True,
             )
 
@@ -73,18 +73,45 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         return md
 
     async def async_fetch(self, url):
-        async with crawl4ai.AsyncWebCrawler(config=self.brower_cfg) as crawler:
-            result = await crawler.arun(
-                url=url,
+        # since async_fetch_many is implemented, async_fetch is not used
+        pass
+    
+    async def async_fetch_many(self, urls):
+        run_config = crawl4ai.CrawlerRunConfig(cache_mode=crawl4ai.CacheMode.BYPASS)
+
+        dispatcher = crawl4ai.async_dispatcher.SemaphoreDispatcher(
+            max_session_permit=self.num_workers,
+            rate_limiter=crawl4ai.RateLimiter(
+                base_delay=(0.1, 0.2),
+                max_delay=10.0
+            ),   
+            monitor=crawl4ai.CrawlerMonitor(
+                max_visible_rows=15,
+                display_mode=crawl4ai.DisplayMode.DETAILED
+            )
+        )
+
+        rets = []
+        async with crawl4ai.AsyncWebCrawler(config=self.browser_config) as crawler:
+            # Get all results at once
+            results = await crawler.arun_many(
+                urls=urls,
+                config=run_config,
+                dispatcher=dispatcher,
             )
 
-        if result.status_code != 200:
-            raise RuntimeError(f'Failed to fetch {url}, status_code: {result.status_code}')
-        
-        final_url = result.url
-        raw = result.cleaned_html
+            # Process all results after completion
+            for result in results:
+                if result.status_code == 200:
+                    final_url = result.url
+                    raw = result.cleaned_html
 
-        return final_url, {}, raw
+                    rets.append((final_url, {}, raw))
+                else:
+                    print(f'Failed to fetch {result.url}, status_code: {result.status_code}')
+                    rets.append(None)
+            
+        return rets
     
     def extract_links(self, s):
         sb_lvl = 0 # square bracket level
