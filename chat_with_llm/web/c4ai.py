@@ -86,7 +86,6 @@ class Crawl4AI(online_content.AsyncOnlineContent):
                 max_delay=10.0
             ),   
             monitor=crawl4ai.CrawlerMonitor(
-                max_visible_rows=15,
                 display_mode=crawl4ai.DisplayMode.DETAILED
             )
         )
