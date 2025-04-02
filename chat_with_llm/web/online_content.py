@@ -18,7 +18,7 @@ class OnlineContent(ABC):
         self.force_fetch = params.get('force_fetch', False)
         self.force_parse = params.get('force_parse', False)
         self.update_cache = params.get('update_cache', True)
-        self.batch_size = params.get('batch_size', config.get('ONLINE_CONTENT_WORKERS', 2))
+        self.num_workers = params.get('num_workers', config.get('ONLINE_CONTENT_WORKERS', 2))
 
     def retrieve(self, url_or_id):
         return self.retrieve_many([url_or_id])[0]
@@ -82,7 +82,7 @@ class OnlineContent(ABC):
 
     def fetch_many(self, urls_or_ids):
         from concurrent.futures import ThreadPoolExecutor
-        with ThreadPoolExecutor(max_workers=self.batch_size) as executor:
+        with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
             results = executor.map(self.fetch_safe, urls_or_ids)
 
         return list(results)
@@ -161,6 +161,7 @@ class AsyncOnlineContent(OnlineContent):
         return asyncio.run(self.async_fetch_many(url))
 
     async def async_fetch_many(self, urls_or_ids):
+        asyncio.Semaphore(self.num_workers)
         tasks = [self.async_fetch(url) for url in urls_or_ids]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         ret = []
