@@ -1,3 +1,4 @@
+import asyncio
 import os
 import json
 from abc import ABC, abstractmethod
@@ -20,61 +21,85 @@ class OnlineContent(ABC):
         self.batch_size = params.get('batch_size', config.get('ONLINE_CONTENT_WORKERS', 2))
 
     def retrieve(self, url_or_id):
-        url, site_id = self.parse_url_id(url_or_id)
-        key_raw = site_id + '.raw'
-        key_parsed = site_id + '.parsed'
-
-        if url is None:
-            if self.storage.has(key_raw):
-                metadata, raw = self.load_raw(site_id)
-                url = metadata.get('url', None)
-            else:
-                raise RuntimeError(f'Cannot decide url from {url_or_id} and no cache found.')
-
-        if self.force_fetch or not self.storage.has(key_raw):
-            try:
-                fetch_results = self.fetch(url)
-            except Exception as e:
-                print(e)
-                return None
-            
-            if fetch_results is None:
-                return None
-            
-            redirect_url, metadata, raw = fetch_results
-            parsed = self.parse(redirect_url, raw)
-
-            metadata = metadata or {}
-            if 'url' not in metadata:
-                metadata['url'] = url
-
-            if url != redirect_url and 'redirect_url' not in metadata:
-                metadata['redirect_url'] = redirect_url
-
-            if raw is None:
-                raise RuntimeError(f'Failed to fetch {url}')
-
-            if self.update_cache:
-                self.save(site_id=site_id, metadata=metadata, raw=raw, parsed=parsed)
-
-            return parsed
-        else:
-            if self.force_parse or not self.storage.has(key_parsed):
-                metadata, raw = self.load_raw(site_id)
-                redirect_url = metadata.get('redirect_url', url)
-                parsed = self.parse(redirect_url, raw)
-                if self.update_cache:
-                    self.save(site_id=site_id, parsed=parsed)
-                return parsed
-            else:
-                return self.load_parsed(site_id)
+        return self.retrieve_many([url_or_id])[0]
             
     def retrieve_many(self, urls_or_ids):
+        to_be_fetched = []
+        rets = []
+        for ind, url_or_id in enumerate(urls_or_ids):
+            url, site_id = self.parse_url_id(url_or_id)
+            key_raw = site_id + '.raw'
+            key_parsed = site_id + '.parsed'
+
+            if url is None:
+                if self.storage.has(key_raw):
+                    metadata, raw = self.load_raw(site_id)
+                    url = metadata.get('url', None)
+                else:
+                    raise RuntimeError(f'Cannot decide url from {url_or_id} and no cache found.')
+
+            if self.force_fetch or not self.storage.has(key_raw):
+                to_be_fetched.append((ind, url))
+                rets.append(None) # placeholder
+            else:
+                if self.force_parse or not self.storage.has(key_parsed):
+                    metadata, raw = self.load_raw(site_id)
+                    redirect_url = metadata.get('redirect_url', url)
+                    parsed = self.parse(redirect_url, raw)
+                    if self.update_cache:
+                        self.save(site_id=site_id, parsed=parsed)
+                    rets.append(parsed)
+                else:
+                    rets.append(self.load_parsed(site_id))
+
+        if to_be_fetched:
+            fetch_results = self.fetch_many([url for _, url in to_be_fetched])
+            for (ind, url), r in zip(to_be_fetched, fetch_results):
+                if r is None:
+                    rets[ind] = None
+                    continue
+                
+                redirect_url, metadata, raw = r
+                parsed = self.safe_parse(redirect_url, raw)
+
+                if not parsed:
+                    rets[ind] = None
+                    continue
+
+                metadata = metadata or {}
+                if 'url' not in metadata:
+                    metadata['url'] = url
+
+                if url != redirect_url and 'redirect_url' not in metadata:
+                    metadata['redirect_url'] = redirect_url
+
+                if self.update_cache:
+                    self.save(site_id=site_id, metadata=metadata, raw=raw, parsed=parsed)
+
+                rets[ind] = parsed
+        
+        return rets
+
+    def fetch_many(self, urls_or_ids):
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=self.batch_size) as executor:
-            results = executor.map(self.retrieve, urls_or_ids)
+            results = executor.map(self.fetch_safe, urls_or_ids)
 
-        return results
+        return list(results)
+    
+    def safe_fetch(self, url_or_id):
+        try:
+            return self.fetch(url_or_id)
+        except Exception as e:
+            print(e)
+            return None
+        
+    def safe_parse(self, redirect_url, raw):
+        try:
+            return self.parse(redirect_url, raw)
+        except Exception as e:
+            print(e)
+            return None
     
     @abstractmethod
     def url2id(self, url):
@@ -126,6 +151,34 @@ class OnlineContent(ABC):
 
         if parsed is not None:
             self.storage.save(site_id + '.parsed', parsed)
+
+class AsyncOnlineContent(OnlineContent):
+    def __init__(self, name, description, **params):
+        super().__init__(name, description, **params)
+        self.loop = params.get('loop', None)
+
+    def fetch_many(self, url):
+        return asyncio.run(self.async_fetch_many(url))
+
+    async def async_fetch_many(self, urls_or_ids):
+        tasks = [self.async_fetch(url) for url in urls_or_ids]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        ret = []
+        for r in results:
+            if not isinstance(r, Exception):
+                ret.append(r)
+            else:
+                print(r)
+                ret.append(None)
+
+        return ret
+    
+    def fetch(self, url):
+        raise RuntimeError('fetch() is not supported in async mode. Use async_fetch() instead.')
+    
+    @abstractmethod
+    async def async_fetch(self, url):
+        pass
     
 all_online_retrievers = {}
 def add_online_retriever(name, retriever_class):

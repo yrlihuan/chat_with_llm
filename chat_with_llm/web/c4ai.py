@@ -8,7 +8,7 @@ from chat_with_llm import config
 from chat_with_llm.web import online_content
 
 # 利用crawl4ai爬取任意页面
-class Crawl4AI(online_content.OnlineContent):
+class Crawl4AI(online_content.AsyncOnlineContent):
     NAME = 'crawl4ai'
     DESCRIPTION = '通用爬取器'
 
@@ -61,9 +61,6 @@ class Crawl4AI(online_content.OnlineContent):
     
     def list(self, n):
         return []
-
-    def fetch(self, url):
-        return asyncio.run(self.async_fetch(url))
 
     def parse(self, url, raw):
         #print(url, len(raw))
