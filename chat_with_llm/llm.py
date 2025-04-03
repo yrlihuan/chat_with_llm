@@ -16,7 +16,6 @@ models = {
     'o1': 'lobechat-o1-2024-12-17',
     'o1-mini': 'or-openai/o1-mini-2024-09-12',
     'o3-mini': 'lobechat-o3-mini-2025-01-31',
-    'gpt4.5': 'or-openai/gpt-4.5-preview-2025-02-27',
     'gpt-4.5': 'or-openai/gpt-4.5-preview-2025-02-27',
     'gemini-1.5-pro': '',
     'gemini-2.0-flash': '',
@@ -46,12 +45,19 @@ def get_model(simple_name, fail_on_unknown=True):
     if fail_on_unknown:
         if simple_name not in models and simple_name not in set(models.values()):
             raise ValueError(f'Unknown model name {simple_name}')
-        
+
     model_id = models.get(simple_name, simple_name)
     if model_id == '':
         model_id = simple_name # 重命名为空表示使用原始名称
 
     return model_id
+
+def get_model_short_name(model_id):
+  for short_name, full_name in models.items():
+    if full_name == model_id:
+      return short_name
+
+  return model_id
 
 llm_storages = {}
 def get_storage(use_case):
