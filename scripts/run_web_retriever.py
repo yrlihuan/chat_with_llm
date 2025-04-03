@@ -54,7 +54,8 @@ def run_retrieve_many(args):
             print('failed')
 
 if __name__ == '__main__':
-    dict_converter = lambda x: dict([tuple(kv.split('=')) for kv in x.split(',')])
+    #dict_converter = lambda x: dict([tuple(kv.split('=')) for kv in x.split(',')])
+    dict_item_converter = lambda s: tuple([s[:s.index('=')], s[s.index('=')+1:]]) if '=' in s else (s, None)
     bool_converter = lambda x: x.lower() == 'true' or x == '1'
 
     parser = argparse.ArgumentParser(description='Test online retriever')
@@ -64,13 +65,13 @@ if __name__ == '__main__':
 
     parser_list = subparsers.add_parser('list', help='List urls')
     parser_list.add_argument('retriever', type=str, default='', help='Name of the online retriever')
-    parser_list.add_argument('--params', type=dict_converter, default={}, help='Parameters for the online retriever')
+    parser_list.add_argument('--params', nargs='+', type=dict_item_converter, default=[], help='Parameters for the online retriever')
     parser_list.add_argument('-n', type=int, default=20, help='Number of urls to list')
 
     parser_retrieve = subparsers.add_parser('retrieve', help='Retrieve content')
     parser_retrieve.add_argument('retriever', type=str, default='', help='Name of the online retriever')
     parser_retrieve.add_argument('url_or_id')
-    parser_retrieve.add_argument('--params', type=dict_converter, default={}, help='Parameters for the online retriever')       
+    parser_retrieve.add_argument('--params', nargs='+', type=dict_item_converter, default=[], help='Parameters for the online retriever')    
     parser_retrieve.add_argument('--print_results', type=bool_converter, default=True)
     parser_retrieve.add_argument('--force_fetch', type=bool_converter, default=False)
     parser_retrieve.add_argument('--force_parse', type=bool_converter, default=False)
@@ -78,13 +79,14 @@ if __name__ == '__main__':
 
     parser_retrieve_many = subparsers.add_parser('retrieve_many', help='Retrieve content for many urls')
     parser_retrieve_many.add_argument('retriever', type=str, default='', help='Name of the online retriever')
-    parser_retrieve_many.add_argument('--params', type=dict_converter, default={}, help='Parameters for the online retriever')       
+    parser_retrieve_many.add_argument('--params', nargs='+', type=dict_item_converter, default=[], help='Parameters for the online retriever')     
     parser_retrieve_many.add_argument('-n', type=int, default=50, help='Number of urls to retrieve')
     parser_retrieve_many.add_argument('--force_fetch', type=bool_converter, default=False)
     parser_retrieve_many.add_argument('--force_parse', type=bool_converter, default=False)
     parser_retrieve_many.add_argument('--update_cache', type=bool_converter, default=True)
 
     args = parser.parse_args()
+    args.params = {k: v for k, v in args.params} if args.params else {}
 
     if args.command == 'help' or args.command is None:
         run_help(parser)

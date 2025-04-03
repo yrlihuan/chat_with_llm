@@ -1,8 +1,11 @@
 import asyncio
 import datetime as dt
 import hashlib
+import json
 
 import crawl4ai
+from bs4 import BeautifulSoup
+from lxml import etree
 
 from chat_with_llm import config
 from chat_with_llm.web import online_content
@@ -19,21 +22,34 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         self.cache_expire = int(params.get('cache_expire', 24*7))
         self.time_base = dt.datetime.strptime('20250101', '%Y%m%d')
 
-        # strip boilerplate content
-        self.opt_strip_boilerplate = params.get('strip_boilerplate', False)
+        self.opt_use_proxy = str(params.get('use_proxy', False)).lower() in ['true', '1', 'yes']
+        self.opt_mobile_mode = str(params.get('mobile_mode', True)).lower() in ['true', '1', 'yes']
 
-        self.opt_use_proxy = params.get('use_proxy', False)
+        self.opt_parser = params.get('parser', 'markdown')
+
+        # link_extractor is like element_path [| text_sub_path] [| href_sub_path]
+        # note | is a valid xpath separator, but we use it as a separator here.
+        # please use 'or' where | is needed in xpath
+        self.opt_link_extractor = params.get('link_extractor', None)
+
+        # strip boilerplate content. lines contains mainly links are removed.
+        # note that this is not for typical homepage, but for content pages
+        self.opt_strip_boilerplate = str(params.get('strip_boilerplate', False)).lower() in ['true', '1', 'yes']
 
         self.generator = crawl4ai.DefaultMarkdownGenerator()
-        if self.opt_use_proxy:
-            self.browser_config = crawl4ai.BrowserConfig(
-                headless=True,
-                proxy=config.get('OPTIONAL_PROXY'),
-            )
-        else:
-            self.browser_config = crawl4ai.BrowserConfig(
-                headless=True,
-            )
+        browser_params = {
+            'headless': True,
+        }
+
+        if self.opt_use_proxy and config.get('OPTIONAL_PROXY'):
+            browser_params['proxy'] = config.get('OPTIONAL_PROXY')
+
+        if self.opt_mobile_mode:
+            browser_params['viewport_width'] = 375
+            browser_params['viewport_height'] = 667
+            browser_params['user_agent'] = 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1.38'
+            
+        self.browser_config = crawl4ai.BrowserConfig(**browser_params)
 
     def url2id(self, url):
         parts = url.replace('https://', '').replace('http://', '').split('/')
@@ -63,7 +79,17 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         return []
 
     def parse(self, url, raw):
-        #print(url, len(raw))
+        if self.opt_parser == 'markdown':
+            return self.parse_as_markdown(url, raw)
+        elif self.opt_parser == 'link_extractor':
+            if self.opt_link_extractor is None:
+                raise RuntimeError('Need to specify link_extractor for link_extractor parser')
+            
+            return self.parse_as_links(url, raw, self.opt_link_extractor)
+        else:
+            return None
+    
+    def parse_as_markdown(self, url, raw):
         markdown_result = self.generator.generate_markdown(raw, base_url=url)
 
         md = markdown_result.raw_markdown
@@ -71,6 +97,40 @@ class Crawl4AI(online_content.AsyncOnlineContent):
             md = self.strip_boilerplate(md)
 
         return md
+    
+    def parse_as_links(self, url, raw, link_extractor):
+
+        parts = link_extractor.split('|')
+        text_xpath = None
+        href_xpath = None
+        if len(parts) == 1:
+            elem_xpath = parts[0].strip()
+        elif len(parts) == 2:
+            elem_xpath = parts[0].strip()
+            text_xpath = parts[1].strip()
+        else:
+            elem_xpath = parts[0].strip()
+            text_xpath = parts[1].strip()
+            href_xpath = parts[2].strip()
+ 
+        text_xpath = '(.//text())[1]'
+        href_xpath = '(.//@href)[1]'
+        # print(link_extractor, text_xpath, href_xpath)
+
+        links = []
+    
+        # use lxml to extract links matching xpath link_extractor
+        dom = etree.HTML(raw)
+        for ele in dom.xpath(elem_xpath):
+            texts = ele.xpath(text_xpath)
+            hrefs = ele.xpath(href_xpath)
+
+            if not texts or not hrefs or not texts[0].strip() or not hrefs[0].strip():
+                continue
+
+            links.append({'url': hrefs[0].strip(), 'text': texts[0].strip()})
+        
+        return json.dumps(links, indent=4, ensure_ascii=False)
 
     async def async_fetch(self, url):
         # since async_fetch_many is implemented, async_fetch is not used
@@ -104,7 +164,7 @@ class Crawl4AI(online_content.AsyncOnlineContent):
             for result in results:
                 if result.status_code == 200:
                     final_url = result.url
-                    raw = result.cleaned_html
+                    raw = result.html
 
                     rets.append((final_url, {}, raw))
                 else:
@@ -113,7 +173,7 @@ class Crawl4AI(online_content.AsyncOnlineContent):
             
         return rets
     
-    def extract_links(self, s):
+    def extract_links_from_markdown(self, s):
         sb_lvl = 0 # square bracket level
         rb_lvl = 0 # round bracket level
         links = []
@@ -148,7 +208,7 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         outputs = []
         lines = contents.split('\n')
         for l in lines:
-            links = self.extract_links(l)
+            links = self.extract_links_from_markdown(l)
             link_length = sum([e-s for s, e, _ in links])
             if link_length > 0.9 * len(l):
                 continue

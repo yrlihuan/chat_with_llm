@@ -149,7 +149,7 @@ if __name__ == "__main__":
         if contents:
             contents += '-' * 80 + '\n'
 
-        contents += f'({item["title"]})[{item["link"]}]'
+        contents += f'({item["title"]})[{item["link"]}]\n'
         contents += f'({item["comments"]} comments)[{item["comments_link"]}]\n'
         contents += item['content'] + '\n'
 
