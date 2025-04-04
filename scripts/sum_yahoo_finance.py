@@ -17,6 +17,7 @@ if __name__ == "__main__":
 
     parser.add_argument('-m', '--model', type=str, default='ds-chat', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', default='v1')
+    parser.add_argument('-n', '--news_count', type=int, default=15, help='The number of news articles to retrieve')
     parser.add_argument('--llm_use_case', type=str, default='sum_yahoo', help='The use case for the llm model')
     parser.add_argument('--boilerplate_threshold', type=int, default=3, help='The threshold for boilerplate content')
     parser.add_argument('--params', nargs='+', type=dict_item_converter, default=[], help='Parameters for the online retriever')
@@ -53,8 +54,13 @@ if __name__ == "__main__":
         print(f'No valid news link found in {home_url}')
         exit(1)
 
-    # 通过统计多篇文章中出现的相同的行数来判断是否是多余的内容
+    if args.news_count > 0:
+        urls = urls[:args.news_count]
+        items = items[:args.news_count]
+
     articles_contents = list(sub_retriever.retrieve_many(urls))
+
+    # 通过统计多篇文章中出现的相同的行数来判断是否是多余的内容
     boiloerplate_line_cnt = collections.defaultdict(int)
     for item, s in zip(items, articles_contents):
         item['content'] = s or ''
