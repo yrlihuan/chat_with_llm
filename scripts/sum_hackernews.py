@@ -42,6 +42,7 @@ def extract_articles(contents):
             if id_match:
                 hn_id = id_match.group(1)
 
+            # 如果匹配序号, 则说明是标题和链接
             if base_ind is not None and part_ind == base_ind + 2:
                 m = link_re.match(part)
                 if not m:
@@ -49,7 +50,8 @@ def extract_articles(contents):
 
                 title = m.group(1)
                 link = m.group(2)
-            elif base_ind is None and part_ind == 2:
+            # 否则, 则对应是评论数和评论链接
+            elif base_ind is None:
                 m = link_re.match(part)
                 if not m:
                     continue
@@ -57,9 +59,10 @@ def extract_articles(contents):
                 text = m.group(1)
                 l = m.group(2)
 
-                if 'comment' in text:
+                if ' ' in text and len(text.split(' ')) == 2 and text.split(' ')[1].startswith('comment'):
                     comments = int(text.split(' ')[0])
                     comments_link = l
+                    break
 
         if title and hn_id:
             articles.append({
