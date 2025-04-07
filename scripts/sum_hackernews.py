@@ -97,6 +97,7 @@ if __name__ == "__main__":
     parser.add_argument('-m', '--model', type=str, default='gemini-2.0-pro', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', default='v2')
     parser.add_argument('-c', '--min_comments', type=int, default=30, help='Minimum number of comments to consider reading the article')
+    parser.add_argument('-d', '--dedup_n', type=int, default=2, help='Remove duplicate articles from the last n runs.') 
     parser.add_argument('--llm_use_case', type=str, default='sum_hn', help='The use case for the llm model')
 
     args = parser.parse_args()
@@ -125,6 +126,19 @@ if __name__ == "__main__":
     articles = extract_articles(hn_news)
 
     articles = [article for article in articles if article['comments'] is not None and article['comments'] >= args.min_comments]
+
+    chat_history_storage = llm.get_storage(args.llm_use_case)
+    if args.dedup_n > 0:
+        # 读取最近的聊天记录
+        files = chat_history_storage.list()
+        files = list(filter(lambda x: x.endswith('.input.txt'), files))
+        files.sort(reverse=True)
+
+        recent = files[:min(args.dedup_n, len(files))]
+
+        for f in recent:
+            recent_contents = chat_history_storage.load(f)
+            articles = list(filter(lambda x: x['link'] not in recent_contents, articles))
 
     if len(articles) == 0:
         print(f'No articles found with at least {args.min_comments} comments')
