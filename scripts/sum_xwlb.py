@@ -20,7 +20,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--step', type=int, default=1, help='Pick news from every n days')
     parser.add_argument('-m', '--model', type=str, default='ds-chat', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', default='v2')
-    parser.add_argument('--use_news_date', type=lambda s: s.lower() == 'true' or s == '1', default=False, help='Whether to use the date of the news')
+    parser.add_argument('--use_news_date', type=lambda s: s.lower() == 'true' or s == '1', default=True, help='Whether to use the date of the news')
     parser.add_argument('--prompt_follow_contents', type=lambda s: s.lower() == 'true' or s == '1', default=False, help='Whether to follow the contents after the prompt')
     parser.add_argument('--llm_use_case', type=str, default='sum_xwlb', help='The use case for the llm model')
 

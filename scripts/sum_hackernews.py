@@ -106,7 +106,8 @@ if __name__ == "__main__":
     hn_retriever = oc.get_online_retriever('crawl4ai',
                                            strip_boilerplate=False,
                                            use_proxy=True,
-                                           cache_expire=2)
+                                           cache_expire=1,
+                                           force_fetch=True)
     
     retriever = oc.get_online_retriever('crawl4ai',
                                         strip_boilerplate=True,
