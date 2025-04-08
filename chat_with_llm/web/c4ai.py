@@ -24,6 +24,7 @@ class Crawl4AI(online_content.AsyncOnlineContent):
 
         self.opt_use_proxy = str(params.get('use_proxy', False)).lower() in ['true', '1', 'yes']
         self.opt_mobile_mode = str(params.get('mobile_mode', True)).lower() in ['true', '1', 'yes']
+        self.opt_debug = str(params.get('debug', False)).lower() in ['true', '1', 'yes']
 
         self.opt_parser = params.get('parser', 'markdown')
 
@@ -43,12 +44,16 @@ class Crawl4AI(online_content.AsyncOnlineContent):
 
         if self.opt_use_proxy and config.get('OPTIONAL_PROXY'):
             browser_params['proxy'] = config.get('OPTIONAL_PROXY')
+        
+        if self.opt_debug:
+            browser_params['headless'] = False
 
         if self.opt_mobile_mode:
             browser_params['viewport_width'] = 375
             browser_params['viewport_height'] = 667
-            browser_params['user_agent'] = 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1.38'
+            #browser_params['user_agent'] = 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1.38'
             
+        browser_params['user_agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'
         self.browser_config = crawl4ai.BrowserConfig(**browser_params)
 
     def url2id(self, url):
@@ -135,6 +140,10 @@ class Crawl4AI(online_content.AsyncOnlineContent):
     async def async_fetch(self, url):
         # since async_fetch_many is implemented, async_fetch is not used
         pass
+
+    async def before_return_html(self, page, context, html, **kwargs):
+        input('Press Enter to continue...')
+        return page
     
     async def async_fetch_many(self, urls):
         run_config = crawl4ai.CrawlerRunConfig(cache_mode=crawl4ai.CacheMode.BYPASS)
@@ -152,13 +161,34 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         )
 
         rets = []
+
+
         async with crawl4ai.AsyncWebCrawler(config=self.browser_config) as crawler:
-            # Get all results at once
-            results = await crawler.arun_many(
-                urls=urls,
-                config=run_config,
-                dispatcher=dispatcher,
-            )
+            if not self.opt_debug:
+                # Get all results at once
+                results = await crawler.arun_many(
+                    urls=urls,
+                    config=run_config,
+                    dispatcher=dispatcher,
+                )
+            else:
+                # 如果debug模式, 每次只获取一个结果
+                crawler.crawler_strategy.set_hook('before_return_html', self.before_return_html)
+
+                # 先运行一次, 确保打开浏览器
+                results = []
+                _ = await crawler.arun(
+                    url='https://www.google.com/',
+                    config=run_config,
+                )
+
+                for url in urls:
+                    print(f'Fetching {url}...')
+                    result = await crawler.arun(
+                        url=url,
+                        config=run_config
+                    )
+                    results.append(result)
 
             # Process all results after completion
             for result in results:
