@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Analyze xwlb news using llm.')
 
-    last_day = time.strftime('%Y%m%d', time.localtime(time.time() - 86400))
+    last_day = time.strftime('%Y%m%d', time.localtime(time.time() - 3600*20))
     parser.add_argument('-d', '--date', default=last_day, help='The last date to analyze')
     parser.add_argument('-n', type=int, default=1, help='Contain at most n days of news')
     parser.add_argument('-s', '--step', type=int, default=1, help='Pick news from every n days')
