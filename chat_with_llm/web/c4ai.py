@@ -1,16 +1,49 @@
+from typing import Dict, List, Tuple
+
 import asyncio
+import collections
 import datetime as dt
 import hashlib
 import json
+import random
+import time
 import urllib
-import urllib.parse
 
 import crawl4ai
-from bs4 import BeautifulSoup
 from lxml import etree
 
 from chat_with_llm import config
 from chat_with_llm.web import online_content
+
+class DomainState:
+    def __init__(self):
+        self.last_request_time = 0.0
+
+class CustomRateLimiter:
+    def __init__(
+        self,
+        base_delay: Tuple[float, float] = (1.0, 3.0),
+    ):
+        self.base_delay = base_delay
+        self.domains: Dict[str, DomainState] = collections.defaultdict(DomainState)
+
+    def get_domain(self, url: str) -> str:
+        return urllib.parse.urlparse(url).netloc
+
+    async def wait_if_needed(self, url: str) -> None:
+        domain = self.get_domain(url)
+        state = self.domains[domain]
+
+        wait_time = random.uniform(*self.base_delay) - (time.time() - state.last_request_time)
+        while wait_time > 0:
+            await asyncio.sleep(wait_time)
+            wait_time = random.uniform(*self.base_delay) - (time.time() - state.last_request_time)
+
+        state.last_request_time = time.time()
+
+    # ignore rate limit status code
+    def update_delay(self, url: str, status_code: int) -> bool:
+        return True
 
 # 利用crawl4ai爬取任意页面
 class Crawl4AI(online_content.AsyncOnlineContent):
@@ -28,8 +61,7 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         self.opt_mobile_mode = str(params.get('mobile_mode', True)).lower() in ['true', '1', 'yes']
         self.opt_debug = str(params.get('debug', False)).lower() in ['true', '1', 'yes']
 
-        params_rate_limit = params.get('rate_limit', '1,5,32')
-        self.opt_rate_limit = [float(s) for s in params_rate_limit.split(',')] if isinstance(params_rate_limit, str) else params_rate_limit
+        self.opt_mean_delay = float(params.get('mean_delay', 1))
 
         self.opt_parser = params.get('parser', 'markdown')
 
@@ -154,16 +186,17 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         return page
     
     async def async_fetch_many(self, urls):
-        run_config = crawl4ai.CrawlerRunConfig(cache_mode=crawl4ai.CacheMode.BYPASS)
+        run_config = crawl4ai.CrawlerRunConfig(
+            cache_mode=crawl4ai.CacheMode.BYPASS,
+        )
 
         dispatcher = crawl4ai.async_dispatcher.SemaphoreDispatcher(
-            max_session_permit=self.num_workers,
-            rate_limiter=crawl4ai.RateLimiter(
-                base_delay=self.opt_rate_limit[:2],
-                max_delay=self.opt_rate_limit[2],
+            semaphore_count=self.num_workers,
+            # NOTE: rate_limiter is not working in multi threadded mode
+            rate_limiter=CustomRateLimiter(
+                base_delay=[self.opt_mean_delay*0.5, self.opt_mean_delay*1.5],
             ),   
             monitor=crawl4ai.CrawlerMonitor(
-                max_visible_rows=15,
                 display_mode=crawl4ai.DisplayMode.DETAILED
             )
         )

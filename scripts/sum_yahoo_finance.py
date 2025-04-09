@@ -5,7 +5,8 @@ import json
 from chat_with_llm import llm
 from chat_with_llm.web import online_content as oc
 
-import time
+import html_utils
+
 if __name__ == "__main__":
     dict_item_converter = lambda s: tuple([s[:s.index('=')], s[s.index('=')+1:]]) if '=' in s else (s, None)
 
@@ -31,8 +32,7 @@ if __name__ == "__main__":
         parser='link_extractor',
         link_extractor='//*[self::div and contains(@class, "content")] | (.//text())[1] | (.//@href)[1]',
         use_proxy=True,
-        cache_expire=1,
-        force_fetch=True)
+        cache_expire=1)
     
     sub_retriever = oc.get_online_retriever(
         'crawl4ai',
@@ -40,6 +40,7 @@ if __name__ == "__main__":
         use_proxy=True,
         strip_boilerplate=True,
         cache_expire=24*7,
+        mean_delay='3',
         **dict(args.params))
     
     if args.prompt in candidate_prompts:
@@ -61,33 +62,20 @@ if __name__ == "__main__":
 
     articles_contents = list(sub_retriever.retrieve_many(urls))
 
-    # 通过统计多篇文章中出现的相同的行数来判断是否是多余的内容
-    boiloerplate_line_cnt = collections.defaultdict(int)
+    raw_contents = ''
+    article_sep = '-' * 80
     for item, s in zip(items, articles_contents):
-        item['content'] = s or ''
-        for line in s.split('\n'):
-            if line.strip():
-                boiloerplate_line_cnt[line] += 1
-
-    boiloerplate_lines = []
-    for line, cnt in boiloerplate_line_cnt.items():
-        if cnt >= args.boilerplate_threshold:
-            boiloerplate_lines.append(line)
-
-    contents = ''
-    for item in items:
-        if not item['content']:
+        if not s:
             continue
 
-        contents_stripped = item['content']
-        for line in boiloerplate_lines:
-            contents_stripped = contents_stripped.replace(line + '\n', '')
+        if raw_contents:
+            raw_contents += article_sep + '\n'
 
-        if contents:
-            contents += '-' * 80 + '\n'
+        raw_contents += f'({item["text"]})[{item["url"]}]\n'
+        raw_contents += s + '\n'
 
-        contents += f'({item["text"]})[{item["url"]}]\n'
-        contents += contents_stripped + '\n'
+    # 通过统计多篇文章中出现的相同的行数来判断是否是多余的内容
+    contents = html_utils.remove_duplicated_lines(raw_contents, args.boilerplate_threshold, whitelist_prefixes=[article_sep])
 
     print(f'开始使用模型{model_id}进行分析...\n')
 
