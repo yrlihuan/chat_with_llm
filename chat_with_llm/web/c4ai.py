@@ -2,6 +2,8 @@ import asyncio
 import datetime as dt
 import hashlib
 import json
+import urllib
+import urllib.parse
 
 import crawl4ai
 from bs4 import BeautifulSoup
@@ -25,6 +27,9 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         self.opt_use_proxy = str(params.get('use_proxy', False)).lower() in ['true', '1', 'yes']
         self.opt_mobile_mode = str(params.get('mobile_mode', True)).lower() in ['true', '1', 'yes']
         self.opt_debug = str(params.get('debug', False)).lower() in ['true', '1', 'yes']
+
+        params_rate_limit = params.get('rate_limit', '1,5,32')
+        self.opt_rate_limit = [float(s) for s in params_rate_limit.split(',')] if isinstance(params_rate_limit, str) else params_rate_limit
 
         self.opt_parser = params.get('parser', 'markdown')
 
@@ -133,7 +138,10 @@ class Crawl4AI(online_content.AsyncOnlineContent):
             if not texts or not hrefs or not texts[0].strip() or not hrefs[0].strip():
                 continue
 
-            links.append({'url': hrefs[0].strip(), 'text': texts[0].strip()})
+            url_path = hrefs[0].strip()
+            link_url = urllib.parse.urljoin(url, url_path)
+
+            links.append({'url': link_url, 'text': texts[0].strip()})
         
         return json.dumps(links, indent=4, ensure_ascii=False)
 
@@ -151,8 +159,8 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         dispatcher = crawl4ai.async_dispatcher.SemaphoreDispatcher(
             max_session_permit=self.num_workers,
             rate_limiter=crawl4ai.RateLimiter(
-                base_delay=(0.1, 0.2),
-                max_delay=10.0
+                base_delay=self.opt_rate_limit[:2],
+                max_delay=self.opt_rate_limit[2],
             ),   
             monitor=crawl4ai.CrawlerMonitor(
                 max_visible_rows=15,
@@ -161,7 +169,6 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         )
 
         rets = []
-
 
         async with crawl4ai.AsyncWebCrawler(config=self.browser_config) as crawler:
             if not self.opt_debug:
@@ -178,7 +185,7 @@ class Crawl4AI(online_content.AsyncOnlineContent):
                 # 先运行一次, 确保打开浏览器
                 results = []
                 _ = await crawler.arun(
-                    url='https://www.google.com/',
+                    url='https://www.baidu.com/',
                     config=run_config,
                 )
 

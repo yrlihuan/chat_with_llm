@@ -9,17 +9,17 @@ import time
 if __name__ == "__main__":
     dict_item_converter = lambda s: tuple([s[:s.index('=')], s[s.index('=')+1:]]) if '=' in s else (s, None)
 
-    parser = argparse.ArgumentParser(description='Summarize financial news from Yahoo Finance.')
+    parser = argparse.ArgumentParser(description='Summarize financial news from Reuters.')
 
     candidate_prompts = {
-        'v1': '以下是今天yahoo finance首页的文章. 文章之间用长--连线分割. 请根据内容总结今天的热点. 输出中文, 不限字数, 可以列举多个热点。',
+        'v1': '以下是今天reuters/business首页的文章. 文章之间用长--连线分割. 请根据内容总结今天的热点. 输出中文, 不限字数, 可以列举多个热点。',
     }
 
     parser.add_argument('-m', '--model', type=str, default='ds-chat', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', default='v1')
     parser.add_argument('-n', '--news_count', type=int, default=15, help='The number of news articles to retrieve')
-    parser.add_argument('--home_url', type=str, default='https://finance.yahoo.com/', help='The home URL to retrieve news from') 
-    parser.add_argument('--llm_use_case', type=str, default='sum_yahoo', help='The use case for the llm model')
+    parser.add_argument('--home_url', type=str, default='https://www.reuters.com/business/', help='The home URL to retrieve news from') 
+    parser.add_argument('--llm_use_case', type=str, default='sum_reuters', help='The use case for the llm model')
     parser.add_argument('--boilerplate_threshold', type=int, default=3, help='The threshold for boilerplate content')
     parser.add_argument('--params', nargs='+', type=dict_item_converter, default=[], help='Parameters for the online retriever')
 
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     home_retriever = oc.get_online_retriever(
         'crawl4ai',
         parser='link_extractor',
-        link_extractor='//*[self::div and contains(@class, "content")] | (.//text())[1] | (.//@href)[1]',
+        link_extractor='//h3/a[@data-testid="Link"] | (.//text())[0] | (.//@href)[0]',
         use_proxy=True,
         cache_expire=1,
         force_fetch=True)
