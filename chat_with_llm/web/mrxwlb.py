@@ -13,7 +13,8 @@ class MRXWLB(online_content.OnlineContent):
     BASE_URL = 'https://cn.govopendata.com/xinwenlianbo/'
 
     def __init__(self, **params):
-        super().__init__(MRXWLB.NAME, MRXWLB.DESCRIPTION, **params)
+        params = {'name': MRXWLB.NAME, 'description': MRXWLB.DESCRIPTION, **params}
+        super().__init__(**params)
 
     def url2id(self, url):
         if not url.startswith(MRXWLB.BASE_URL):
@@ -32,7 +33,7 @@ class MRXWLB(online_content.OnlineContent):
         return f'{MRXWLB.BASE_URL}{site_id}/'
     
     def list(self, n):
-        t = dt.datetime.now() - dt.timedelta(hours=21)
+        t = dt.datetime.now() - dt.timedelta(hours=20)
         date_end = self.params.get('date_end', t.strftime('%Y%m%d'))
 
         d1 = dt.datetime.strptime(date_end, '%Y%m%d')

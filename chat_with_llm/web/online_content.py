@@ -9,10 +9,12 @@ from chat_with_llm import config
 __all__ = ['OnlineContent', 'add_online_retriever', 'get_online_retriever', 'list_online_retrievers']
 
 class OnlineContent(ABC):
-    def __init__(self, name, description, **params):
-        self.name = name
-        self.description = description
-        self.storage = storage.get_storage('web_cache', name)
+    def __init__(self, **params):
+        assert 'name' in params, 'name is required'
+
+        self.name = params['name']
+        self.description = params.get('description', '')
+        self.storage = storage.get_storage('web_cache', self.name)
         self.params = params
 
         self.force_fetch = params.get('force_fetch', False)
@@ -153,8 +155,8 @@ class OnlineContent(ABC):
             self.storage.save(site_id + '.parsed', parsed)
 
 class AsyncOnlineContent(OnlineContent):
-    def __init__(self, name, description, **params):
-        super().__init__(name, description, **params)
+    def __init__(self, **params):
+        super().__init__(**params)
         self.loop = params.get('loop', None)
 
     def fetch_many(self, urls):

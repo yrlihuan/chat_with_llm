@@ -70,12 +70,8 @@ def get_model_query_delay(model_id_or_alias):
     return model_query_delays.get(model_id_or_alias, None) or model_query_delays.get(models_aliases.get(model_id_or_alias, ''), 0)
 
 def chat(prompt, contents, model_id, **kwargs):
-    response, reasoning = chat_impl(prompt, contents, model_id, **kwargs)
+    response, reasoning, filename = chat_impl(prompt, contents, model_id, **kwargs)
     return response
-
-def reason(prompt, contents, model_id, **kwargs):
-    response, reasoning = chat_impl(prompt, contents, model_id, **kwargs)
-    return response, reasoning
 
 def chat_impl(prompt,
               contents,
@@ -131,6 +127,7 @@ def chat_impl(prompt,
     else:
         reasoning = None
 
+    filename = None
     if save:
         storage_obj = get_storage(use_case)
 
@@ -156,4 +153,4 @@ def chat_impl(prompt,
         storage_obj.save(filename, data)
         storage_obj.save(filename[:-len('.txt')] + '.input.txt', contents)
                                                                   
-    return response, reasoning
+    return response, reasoning, filename

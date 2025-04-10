@@ -51,7 +51,8 @@ class Crawl4AI(online_content.AsyncOnlineContent):
     DESCRIPTION = '通用爬取器'
 
     def __init__(self, **params):
-        super().__init__(Crawl4AI.NAME, Crawl4AI.DESCRIPTION, **params)
+        params = {'name': Crawl4AI.NAME, 'description': Crawl4AI.DESCRIPTION, **params}
+        super().__init__(**params)
 
         # cache expire in hours
         self.cache_expire = int(params.get('cache_expire', 24*7))
