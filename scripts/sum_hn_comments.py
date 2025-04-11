@@ -75,7 +75,7 @@ if __name__ == "__main__":
             # 读取最近的聊天记录, 检查该文章是否已经被处理过
             chat_history_storage = llm.get_storage(args.llm_use_case)
             files = chat_history_storage.list()
-            files.sort(reversed=True)
+            files.sort(reverse=True)
 
             date_lookback = 1
             date_lookback_str = time.strftime('%Y%m%d_%H%M%S', time.localtime(time.time() - date_lookback * 24 * 3600))
