@@ -105,8 +105,10 @@ class HNComments(c4ai.Crawl4AI):
         # 从markdown中parse出评论的作者, 评论的树结构, 以及评论的内容
         comments = {}
         info = {}
+        #print('\n'.join(md.split('\n')[:8]))
+
         for l in md.split('\n'):
-            if 'javascript:void' in l and 'https://news.ycombinator.com/vote' in l:
+            if 'https://news.ycombinator.com/vote' in l:
                 # parse出行内的链接
                 link_pattren = re.compile(r'\[(.*?)\]\((.*?)\)')
                 matches = link_pattren.findall(l)
@@ -118,12 +120,18 @@ class HNComments(c4ai.Crawl4AI):
                     if link.startswith('vote?id='):
                         # 取出评论id
                         info['comment_id'] = link.split('=')[1].split('&')[0]
+                        if info['comment_id'] == self.url2id(url):
+                            info['origin_post'] = True
+
                     elif link.startswith('user?id='):
                         # 取出用户
                         info['user_id'] = link.split('=')[1]
                     elif text == 'parent':
                         # parent link is like: item?id=43631543#43633751
                         info['parent_id'] = link.split('=')[1].split('#')[1]
+                    elif info.get('origin_post') and text and link and not info.get('post_title'):
+                        info['post_title'] = text
+                        info['post_url'] = link
 
                 comment_id = info.get('comment_id')
                 if not comment_id:
@@ -134,13 +142,10 @@ class HNComments(c4ai.Crawl4AI):
             else:
                 reply_link_prefix = '_[reply](https://news.ycombinator.com/reply?'
                 reply_link_start = l.find(reply_link_prefix)
-                if reply_link_start > 0:
+                if reply_link_start > 0 and not info.get('origin_post'):
                     info['text'] = l[:reply_link_start-1]
-                elif info.get('seq') == 0 and 'http' in l:
-                    # the first line contains url of article and doesn't have reply_to link.
-                    # the url is like: <https://threadreaderapp.com/thread/1909741170953273353.html>
-                    info['text'] = l.strip()[1:-1]
-                
+        
+        #print(comments.get(self.url2id(url)))
         for commend_id in comments:
             update_and_get_level(comments, commend_id)
 
@@ -152,7 +157,11 @@ class HNComments(c4ai.Crawl4AI):
                 reply_to = f', reply to {info.get('parent_id', 0)}'
             else:
                 reply_to = ''
-            contents += f"id: {info['comment_id']} (by {info['user_id']}{reply_to}): {info.get('text', '')}\n"
+            
+            if info.get('post_title'):
+                contents += f"**[{info['post_title']}]({info['post_url']})**\n"
+            else:
+                contents += f"id: {info['comment_id']} (by {info['user_id']}{reply_to}): {info.get('text', '')}\n"
         
         return contents
 
