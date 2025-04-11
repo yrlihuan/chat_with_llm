@@ -154,7 +154,7 @@ class HNComments(c4ai.Crawl4AI):
         for info in comments:
             contents += '  ' * info['level']
             if info.get('parent_id'):
-                reply_to = f', reply to {info.get('parent_id', 0)}'
+                reply_to = f", reply to {info.get('parent_id', 0)}"
             else:
                 reply_to = ''
             
