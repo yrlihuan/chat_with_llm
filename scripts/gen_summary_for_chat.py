@@ -8,15 +8,13 @@ from chat_with_llm import llm
 
 if __name__ == '__main__':
     prompts = {
-        'v1': '对下面的内容生成一个十六个字之内的标题',
-        'v2': '对下面的内容生成一个十六个字之内的概况, 主要是用于快速识别文章中讨论的话题, 可以只是重点内容的名词. 输出只包括概括, 不需要其他内容',
-        'v3': '对下面的内容生成一个十六个字之内的概况. 如果是一个话题, 正常概况内容. 如果内容包含多个话题, 用一个重点名词来概括前三个话题. 输出只包括概括, 不需要其他内容',
-        'v4': '对下面的内容生成标题和概况. 标题十六个字之内, 概况在80字到120字. 如果内容包含多个话题, 用三到四个名词做标题. 输出分两行, 第一行标题, 第二行概况. 不需要其他内容',
+        'v1': '对下面的内容生成标题和概况. 标题十六个字之内, 概况在80字到120字. 输出分两行, 第一行标题, 第二行概况. 不需要其他内容',
+        'v2': '对下面的内容生成标题和概况. 标题十六个字之内, 概况在80字到120字. 如果内容包含多个话题, 用三到四个名词做标题. 输出分两行, 第一行标题, 第二行概况. 不需要其他内容',
     }
 
     parser = argparse.ArgumentParser(description='Generate summary for chat history')
     parser.add_argument('-m', '--model', type=str, default='ds-chat', help='The model to use for generating summary')
-    parser.add_argument('-p', '--prompt', type=str, default='v4')
+    parser.add_argument('-p', '--prompt', type=str, default='v2')
     parser.add_argument('-u', '--use_cases', type=lambda s: s.split(','), default=[])
 
     args = parser.parse_args()
