@@ -44,7 +44,8 @@ if __name__ == "__main__":
     parser.add_argument('--llm_use_case', type=str, default='sum_hn_comments', help='The use case for the llm model')
     parser.add_argument('--model_alt', default='gemini-2.0-pro', help='The alternative model to use for generating summary')
     parser.add_argument('--model_alt_threshold', default=256*1024, type=int, help='The threshold to use the alternative model')
-    parser.add_argument('--daily_topn', type=int, default=10, help='The number of daily top articles to retrieve')
+    parser.add_argument('--daily_topn', type=int, default=15, help='The number of daily top articles to retrieve')
+    parser.add_argument('--min_comments', type=int, default=30, help='The minimum number of comments to retrieve')
     parser.add_argument('--skip_processed', action='store_true', default=False, help='Skip processed articles')
     parser.add_argument('--params', nargs='+', type=dict_item_converter, default=[], help='Parameters for the online retriever')
 
@@ -54,6 +55,7 @@ if __name__ == "__main__":
     model_id_alt = llm.get_model(args.model_alt)
 
     params = dict(args.params)
+    params['min_comments'] = args.min_comments
 
     hn_retriever = oc.get_online_retriever(
         'hn_comments', cache_expire=1, **params)
@@ -93,6 +95,12 @@ if __name__ == "__main__":
                 for url in urls:
                     if url in chat_contents:
                         processed_urls.add(url)
+
+            for url in urls:
+                if url in processed_urls:
+                    print(f'Skip {url}')
+                else:
+                    print(f'Process {url}')
 
             urls = [url for url in urls if url not in processed_urls]
 

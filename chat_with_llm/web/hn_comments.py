@@ -24,6 +24,8 @@ class HNComments(c4ai.Crawl4AI):
         }
 
         super().__init__(**params)
+
+        self.opt_min_comments = params.get('min_comments', 0)
         
     def url2id(self, url):
         pattern = re.compile(r'https://news\.ycombinator\.com/item\?id=(\d+)')
@@ -66,6 +68,7 @@ class HNComments(c4ai.Crawl4AI):
                 item['comments'] = 0
                 
         items.sort(key=lambda x: (x['comments'], x['url']), reverse=True)
+        items = [item for item in items if item['comments'] >= self.opt_min_comments]
         items = items[:min(n, len(items))]
         return [items['url'] for items in items]
 
