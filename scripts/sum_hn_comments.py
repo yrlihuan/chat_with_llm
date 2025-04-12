@@ -103,6 +103,7 @@ if __name__ == "__main__":
                     print(f'Process {url}')
 
             urls = [url for url in urls if url not in processed_urls]
+            urls = list(reversed(urls))
 
     # 获取评论
     article_comments = hn_retriever.retrieve_many(urls)
