@@ -94,7 +94,7 @@ if __name__ == "__main__":
               '以及[评论数](评论链接). 输出中文, 不限字数. ',
     }
 
-    parser.add_argument('-m', '--model', type=str, default='gemini-2.0-pro', help='The model to use for generating summary')
+    parser.add_argument('-m', '--model', type=str, default='gemini-2.5-pro', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', default='v2')
     parser.add_argument('-c', '--min_comments', type=int, default=30, help='Minimum number of comments to consider reading the article')
     parser.add_argument('-d', '--dedup_n', type=int, default=4, help='Remove duplicate articles from the last n runs.') 

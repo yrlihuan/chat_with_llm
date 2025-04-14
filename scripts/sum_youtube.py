@@ -26,7 +26,7 @@ if __name__ == '__main__':
     }
 
     parser.add_argument('youtube_link', type=str, help='The youtube video link')
-    parser.add_argument('-m', '--model', type=str, default='gemini-2.0-pro', help='The model to use for generating summary')
+    parser.add_argument('-m', '--model', type=str, default='gemini-2.5-pro', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', type=str, default='v2', help='The prompt to use for generating summary')
 
     args = parser.parse_args()
