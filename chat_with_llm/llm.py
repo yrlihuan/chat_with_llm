@@ -38,6 +38,7 @@ models_aliases = {v: k for k, v in models.items()}
 
 model_query_delays = {
     'gemini-2.0-pro': 7,
+    'gemini-2.5-pro': 7,
     'gemini-2.0-flash-thinking': 7,
 }
 

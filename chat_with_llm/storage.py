@@ -5,6 +5,11 @@ from abc import ABC, abstractmethod
 from chat_with_llm import config
 
 class StorageBase(ABC):
+    """
+    Base class for storage backends.
+    params:
+        identifier: The identifier for the data. It can be None if all the data is under the same category.
+    """
     def __init__(self, identifier):
         self.identifier = identifier
 
@@ -60,7 +65,7 @@ class ContentStorage_File(StorageBase):
 def get_storage(storage_type, identifier, storage_class='file'):
     if storage_class == 'file':
         storage_base = config.get('STORAGE_BASE_DIR')
-        assert storage_type in ['chat_history', 'web_cache', 'subtitle_cache', 'video_summary'], f'Unknown storage type: {storage_type}'
+        assert storage_type in ['chat_history', 'web_cache', 'subtitle_cache', 'video_summary', 'browser_state'], f'Unknown storage type: {storage_type}'
         return ContentStorage_File(os.path.join(storage_base, storage_type), identifier)
     else:
         raise ValueError(f'Unknown storage class: {storage_class}')

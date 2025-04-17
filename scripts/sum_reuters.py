@@ -4,8 +4,7 @@ import json
 
 from chat_with_llm import llm
 from chat_with_llm.web import online_content as oc
-
-import html_utils
+from chat_with_llm.web import utils as web_utils
 
 if __name__ == "__main__":
     dict_item_converter = lambda s: tuple([s[:s.index('=')], s[s.index('=')+1:]]) if '=' in s else (s, None)
@@ -75,7 +74,7 @@ if __name__ == "__main__":
         raw_contents += s + '\n'
 
     # 通过统计多篇文章中出现的相同的行数来判断是否是多余的内容
-    contents = html_utils.remove_duplicated_lines(raw_contents, args.boilerplate_threshold, whitelist_prefixes=[article_sep])
+    contents = web_utils.remove_duplicated_lines(raw_contents, args.boilerplate_threshold, whitelist_prefixes=[article_sep])
 
     print(f'开始使用模型{model_id}进行分析...\n')
 

@@ -13,12 +13,16 @@ import crawl4ai
 from lxml import etree
 
 from chat_with_llm import config
+from chat_with_llm import storage
 from chat_with_llm.web import online_content
+from chat_with_llm.web import utils as web_utils
 
 class DomainState:
     def __init__(self):
         self.last_request_time = 0.0
 
+# crawl4ai (ver 0.5.0.post4)内置的RateLimiter存在一个bug, 当使用arun_many调用时, 多个爬取线程会
+# 在同一时间调用wait_if_needed并计算出wait_time, 导致实际上并没有让不同的线程等待.
 class CustomRateLimiter:
     def __init__(
         self,
@@ -61,6 +65,8 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         self.opt_use_proxy = str(params.get('use_proxy', False)).lower() in ['true', '1', 'yes']
         self.opt_mobile_mode = str(params.get('mobile_mode', True)).lower() in ['true', '1', 'yes']
         self.opt_debug = str(params.get('debug', False)).lower() in ['true', '1', 'yes']
+        self.opt_login = params.get('login', None)
+        self.opt_storage_state_id = params.get('storage_state_id', None)
 
         self.opt_mean_delay = float(params.get('mean_delay', 1))
 
@@ -85,6 +91,13 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         
         if self.opt_debug:
             browser_params['headless'] = False
+
+        if self.opt_login:
+            browser_params['headless'] = False
+            if not self.opt_storage_state_id:
+                site_id = web_utils.url_to_site(self.opt_login)
+                print(f'storage_state_id is not specified. Will use login url\'s site id {site_id} as storage_state_id')
+                self.opt_storage_state_id = site_id
 
         if self.opt_mobile_mode:
             browser_params['viewport_width'] = 375
@@ -137,7 +150,7 @@ class Crawl4AI(online_content.AsyncOnlineContent):
 
         md = markdown_result.raw_markdown
         if self.opt_strip_boilerplate:
-            md = self.strip_boilerplate(md)
+            md = web_utils.strip_boilerplate(md)
 
         return md
     
@@ -182,9 +195,31 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         # since async_fetch_many is implemented, async_fetch is not used
         pass
 
-    async def before_return_html(self, page, context, html, **kwargs):
+    async def before_return_html_wait_for_user(self, page, context, html, **kwargs):
         input('Press Enter to continue...')
         return page
+    
+    async def on_browser_created_handle_login(self, browser, context):
+        # use browser.contexts[0] instead of param context
+        #context = browser.contexts[0]
+
+        page = await context.new_page()
+        await page.goto(self.opt_login)
+
+        input('Press Enter after login finished...')
+
+#        print(context.storage_state())
+        if len(browser.contexts) > 0:
+            storage_state = await browser.contexts[0].storage_state()
+            
+            # save storage state
+            storage_obj = storage.get_storage('browser_state', None)
+            storage_obj.save(self.opt_storage_state_id, json.dumps(storage_state, indent=4, ensure_ascii=False))
+        else:
+            print('No context found. Do not close browser.')
+
+        await page.close()
+
     
     async def async_fetch_many(self, urls):
         run_config = crawl4ai.CrawlerRunConfig(
@@ -204,18 +239,31 @@ class Crawl4AI(online_content.AsyncOnlineContent):
 
         rets = []
 
-        async with crawl4ai.AsyncWebCrawler(config=self.browser_config) as crawler:
-            if not self.opt_debug:
-                # Get all results at once
-                results = await crawler.arun_many(
-                    urls=urls,
-                    config=run_config,
-                    dispatcher=dispatcher,
-                )
-            else:
-                # 如果debug模式, 每次只获取一个结果
-                crawler.crawler_strategy.set_hook('before_return_html', self.before_return_html)
+        if self.opt_login:
+            try:
+                # NOTE: 当前的实现通过crawl4ai的hook获取browser实例. 不算是最优雅的实现
+                login_browser = None
+                login_browser = crawl4ai.AsyncWebCrawler(config=self.browser_config)
+                login_browser.crawler_strategy.set_hook('on_browser_created', self.on_browser_created_handle_login)
 
+                await login_browser.start()
+                
+            finally:
+                if login_browser:
+                    await login_browser.close()
+
+        if self.opt_storage_state_id:
+            try:
+                # load storage state
+                storage_obj = storage.get_storage('browser_state', None)
+                storage_state = json.loads(storage_obj.load(self.opt_storage_state_id))
+                self.browser_config.storage_state = storage_state
+            except Exception as e:
+                print(f'Failed to load storage state: {e}')
+
+        async with crawl4ai.AsyncWebCrawler(config=self.browser_config) as crawler:
+            if self.opt_debug:
+                crawler.crawler_strategy.set_hook('before_return_html', self.before_return_html_wait_for_user)
                 # 先运行一次, 确保打开浏览器
                 results = []
                 _ = await crawler.arun(
@@ -223,6 +271,7 @@ class Crawl4AI(online_content.AsyncOnlineContent):
                     config=run_config,
                 )
 
+                # 如果debug模式, 每次只获取一个结果
                 for url in urls:
                     print(f'Fetching {url}...')
                     result = await crawler.arun(
@@ -230,6 +279,14 @@ class Crawl4AI(online_content.AsyncOnlineContent):
                         config=run_config
                     )
                     results.append(result)
+
+            else:
+                # Get all results at once
+                results = await crawler.arun_many(
+                    urls=urls,
+                    config=run_config,
+                    dispatcher=dispatcher,
+                )
 
             # Process all results after completion
             for result in results:
@@ -244,57 +301,4 @@ class Crawl4AI(online_content.AsyncOnlineContent):
             
         return rets
     
-    def extract_links_from_markdown(self, s):
-        sb_lvl = 0 # square bracket level
-        rb_lvl = 0 # round bracket level
-        links = []
-
-        link_start = None
-        link_end = None
-        link_text = None
-        for p, c in enumerate(s):
-            if c == '[':
-                sb_lvl += 1
-                if sb_lvl == 1:
-                    link_start = p
-            elif c == ']':
-                sb_lvl = max(0, sb_lvl - 1)
-                if sb_lvl == 0 and link_start is not None:
-                    link_text = s[link_start+1:p]
-            elif c == '(' and sb_lvl == 0 and rb_lvl == 0 and link_start is not None:
-                rb_lvl += 1
-            elif c == ')' and sb_lvl == 0 and rb_lvl == 1:
-                link_end = p + 1
-                links.append((link_start, link_end, link_text))
-                link_start = None
-                link_end = None
-                link_text = None
-                rb_lvl = 0
-
-        return links
-
-    def strip_boilerplate(self, contents):
-        # 网页中包含大量的链接. 在这里我们尝试去掉这些链接
-
-        outputs = []
-        lines = contents.split('\n')
-        for l in lines:
-            links = self.extract_links_from_markdown(l)
-            link_length = sum([e-s for s, e, _ in links])
-            if link_length > 0.9 * len(l):
-                continue
-
-            l2 = ''
-            p = 0
-            for s, e, t in links:
-                l2 += l[p:s]
-                l2 += t
-                p = e
-                
-            l2 += l[p:]
-
-            outputs.append(l2)
-
-        return '\n'.join(outputs)
-
 online_content.add_online_retriever(Crawl4AI.NAME, Crawl4AI)
