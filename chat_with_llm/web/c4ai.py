@@ -63,10 +63,10 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         self.time_base = dt.datetime.strptime('20250101', '%Y%m%d')
 
         self.opt_use_proxy = str(params.get('use_proxy', False)).lower() in ['true', '1', 'yes']
-        self.opt_mobile_mode = str(params.get('mobile_mode', True)).lower() in ['true', '1', 'yes']
+        self.opt_mobile_mode = str(params.get('mobile_mode', False)).lower() in ['true', '1', 'yes']
         self.opt_debug = str(params.get('debug', False)).lower() in ['true', '1', 'yes']
         self.opt_login = params.get('login', None)
-        self.opt_storage_state_id = params.get('storage_state_id', None)
+        self.opt_storage_state_id = params.get('storage_state_id', None) or params.get('ss', None)
 
         self.opt_mean_delay = float(params.get('mean_delay', 1))
 
@@ -297,6 +297,7 @@ class Crawl4AI(online_content.AsyncOnlineContent):
                     rets.append((final_url, {}, raw))
                 else:
                     print(f'Failed to fetch {result.url}, status_code: {result.status_code}')
+                    print(result)
                     rets.append(None)
             
         return rets

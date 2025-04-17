@@ -70,6 +70,8 @@ if __name__ == "__main__":
         urls = [url]
     else:
         urls = hn_retriever.list(n=args.daily_topn)
+        # 让评论最多的文章最后去处理. 这样最新的文章会显示在前面
+        urls = list(reversed(urls))
 
         if args.skip_processed:
             processed_urls = set()
@@ -103,7 +105,7 @@ if __name__ == "__main__":
                     print(f'Process {url}')
 
             urls = [url for url in urls if url not in processed_urls]
-            urls = list(reversed(urls))
+        
 
     # 获取评论
     article_comments = hn_retriever.retrieve_many(urls)
