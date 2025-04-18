@@ -15,7 +15,7 @@ if __name__ == "__main__":
         'v1': '以下是今天reuters/business首页的文章. 文章之间用长--连线分割. 请根据内容总结今天的热点. 输出中文, 不限字数, 可以列举多个热点。',
     }
 
-    parser.add_argument('-m', '--model', type=str, default='gemini-2.5-pro', help='The model to use for generating summary')
+    parser.add_argument('-m', '--model', type=str, default='gemini-2.0-pro', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', default='v1')
     parser.add_argument('-n', '--news_count', type=int, default=15, help='The number of news articles to retrieve')
     parser.add_argument('--home_url', type=str, default='https://www.reuters.com/business/', help='The home URL to retrieve news from') 

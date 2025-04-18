@@ -4,7 +4,7 @@ import json
 
 from chat_with_llm import llm
 from chat_with_llm.web import online_content as oc
-from chat_with_llm.web import web_utils
+from chat_with_llm.web import utils as web_utils
 
 if __name__ == "__main__":
     dict_item_converter = lambda s: tuple([s[:s.index('=')], s[s.index('=')+1:]]) if '=' in s else (s, None)
