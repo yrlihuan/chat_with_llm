@@ -52,8 +52,10 @@ if __name__ == "__main__":
 
     # 过滤掉短的链接
     items = [item for item in items if len(item['text']) > 25]
+    for item in items:
+        print(f'{item["text"]} {item["url"]}')
 
-    urls = [link['url'] for link in items]
+    urls = [item['url'] for item in items]
     if len(urls) == 0:
         print(f'No valid news link found in {args.home_url}')
         exit(1)
