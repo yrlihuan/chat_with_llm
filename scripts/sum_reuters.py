@@ -29,7 +29,7 @@ if __name__ == "__main__":
     home_retriever = oc.get_online_retriever(
         'crawl4ai',
         parser='link_extractor',
-        link_extractor='//h3/a[@data-testid="Link"] | (.//text())[0] | (.//@href)[0]',
+        link_extractor='//a[@data-testid="Heading"] | (.//text())[0] | (.//@href)[0]',
         use_proxy=True,
         cache_expire=1)
     
@@ -49,6 +49,9 @@ if __name__ == "__main__":
 
     json_links = home_retriever.retrieve(args.home_url)
     items = json.loads(json_links)
+
+    # 过滤掉短的链接
+    items = [item for item in items if len(item['text']) > 25]
 
     urls = [link['url'] for link in items]
     if len(urls) == 0:

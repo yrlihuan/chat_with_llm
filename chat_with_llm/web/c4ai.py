@@ -182,6 +182,7 @@ class Crawl4AI(online_content.AsyncOnlineContent):
             hrefs = ele.xpath(href_xpath)
 
             if not texts or not hrefs or not texts[0].strip() or not hrefs[0].strip():
+                print(f'Warning: skip element for empty text or href. {ele.text}')
                 continue
 
             url_path = hrefs[0].strip()
