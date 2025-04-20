@@ -84,6 +84,7 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         self.generator = crawl4ai.DefaultMarkdownGenerator()
         browser_params = {
             'headless': True,
+            #'use_managed_browser': True,
         }
 
         if self.opt_use_proxy and config.get('OPTIONAL_PROXY'):
@@ -91,6 +92,7 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         
         if self.opt_debug:
             browser_params['headless'] = False
+            browser_params['devtools'] = True
 
         if self.opt_login:
             browser_params['headless'] = False
@@ -100,9 +102,13 @@ class Crawl4AI(online_content.AsyncOnlineContent):
                 self.opt_storage_state_id = site_id
 
         if self.opt_mobile_mode:
-            browser_params['viewport_width'] = 375
-            browser_params['viewport_height'] = 667
+            browser_params['viewport_width'] = 620
+            browser_params['viewport_height'] = 1280
             #browser_params['user_agent'] = 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1.38'
+        else:
+            browser_params['viewport_width'] = 2186
+            browser_params['viewport_height'] = 1776
+
             
         browser_params['user_agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'
         self.browser_config = crawl4ai.BrowserConfig(**browser_params)
@@ -196,10 +202,16 @@ class Crawl4AI(online_content.AsyncOnlineContent):
         # since async_fetch_many is implemented, async_fetch is not used
         pass
 
-    async def before_return_html_wait_for_user(self, page, context, html, **kwargs):
+    async def debug_before_goto(self, page, context, url, config):
+        print(f'goto: {url}')
+
+    async def debug_before_return_html_wait_for_user(self, page, context, html, **kwargs):
+        page.on("response", self.debug_page_on_response)
         input('Press Enter to continue...')
-        return page
-    
+
+    async def debug_page_on_response(self, response):
+        print(f"Response: {response.url} -> {response.status}")
+
     async def on_browser_created_handle_login(self, browser, context):
         # use browser.contexts[0] instead of param context
         #context = browser.contexts[0]
@@ -264,14 +276,11 @@ class Crawl4AI(online_content.AsyncOnlineContent):
 
         async with crawl4ai.AsyncWebCrawler(config=self.browser_config) as crawler:
             if self.opt_debug:
-                crawler.crawler_strategy.set_hook('before_return_html', self.before_return_html_wait_for_user)
-                # 先运行一次, 确保打开浏览器
-                results = []
-                _ = await crawler.arun(
-                    url='https://www.baidu.com/',
-                    config=run_config,
-                )
+                crawler.crawler_strategy.set_hook('before_goto', self.debug_before_goto)
+                crawler.crawler_strategy.set_hook('before_return_html', self.debug_before_return_html_wait_for_user)
+                run_config.log_console = True
 
+                results = []
                 # 如果debug模式, 每次只获取一个结果
                 for url in urls:
                     print(f'Fetching {url}...')
@@ -298,7 +307,27 @@ class Crawl4AI(online_content.AsyncOnlineContent):
                     rets.append((final_url, {}, raw))
                 else:
                     print(f'Failed to fetch {result.url}, status_code: {result.status_code}')
-                    print(result)
+                    r0 = result[0]
+                    for prop in dir(r0):
+                        if prop.startswith('_'):
+                            continue
+
+                        import inspect
+                        if isinstance(getattr(type(r0), prop, None), property):
+                            continue
+
+                        value = getattr(result[0], prop)
+                        if callable(value):
+                            continue
+
+                        if prop == 'html':
+                            if len(value) > 5*1024:
+                                print(prop, value[:256], '...', value[-256:])
+                            else:
+                                print(prop, value)
+                        else:
+                            print(prop, value)
+
                     rets.append(None)
             
         return rets
