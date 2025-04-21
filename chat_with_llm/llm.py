@@ -8,59 +8,54 @@ from chat_with_llm import storage
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 
-__all__ = ['get_model', 'get_storage', 'get_model_query_delay', 'chat', 'reason']
+__all__ = ['list_models', 'get_model', 'get_storage', 'get_model_query_delay', 'chat', 'reason']
 
-models = {
-    'gpt-4o': 'or-openai/chatgpt-4o-latest',
-    '4o': 'or-openai/chatgpt-4o-latest',
-    'o1': 'lobechat-o1-2024-12-17',
-    'o1-mini': 'or-openai/o1-mini-2024-09-12',
-    'o3-mini': 'lobechat-o3-mini-2025-01-31',
-    'gpt-4.5': 'or-openai/gpt-4.5-preview-2025-02-27',
-    'gemini-1.5-pro': '',
-    'gemini-2.0-flash': '',
-    'gemini-2.0-flash-thinking': 'gemini-2.0-flash-thinking-exp-01-21',
-    'gemini-2.0-pro': 'gemini-2.0-pro-exp-02-05',
-    'gemini-2.5-pro': 'gemini-2.5-pro-exp-03-25',
-    'gemini-2.5-pro-pv': 'gemini-2.5-pro-preview-03-25',
-    'gemini-2.5-flash': 'gemini-2.5-flash-preview-04-17',
-    'grok-2.0-pro': '',
-    'grok-2.0-latest': '',
-    'grok-beta': '',
-    'claude-3.7': 'claude-3-7-sonnet-20250219',
-    'deepseek-reasoner': 'deepseek-reasoner-alpha-data-process',
-    'deepseek-chat': 'deepseek-chat-alpha-data-process',
-    'ds-reasoner': 'deepseek-reasoner-alpha-data-process',
-    'ds-chat': 'deepseek-chat-alpha-data-process',
-    'doubao-1.5-pro': 'doubao-1.5-pro-256k-250115',
-    'abab6.5': 'abab6.5s-chat',
-}
+#g_model_to_short_name = 
+def _load_model_from_config():
+    models = config.get('OPENAI_MODELS')
 
-models_aliases = {v: k for k, v in models.items()}
+    model_to_short_name = {}
+    short_name_to_model = {}
+    model_delays = {}
 
-model_query_delays = {
-    'gemini-2.0-pro': 7,
-    'gemini-2.5-pro': 15,
-    'gemini-2.0-flash-thinking': 7,
-}
+    for data in models:
+        name = data.get('name')
+        alias = data.get('alias')
+        delay = data.get('delay')
+        disabled = data.get('disabled', False)
 
-def get_model(simple_name, fail_on_unknown=True):
-    if fail_on_unknown:
-        if simple_name not in models and simple_name not in set(models.values()):
-            raise ValueError(f'Unknown model name {simple_name}')
+        if isinstance(alias, list):
+            model_to_short_name[name] = alias[0]
+            for a in alias:
+                short_name_to_model[a] = name
+        elif isinstance(alias, str):
+            model_to_short_name[name] = alias
+            short_name_to_model[alias] = name
+        else:
+            model_to_short_name[name] = name
+            short_name_to_model[name] = name
 
-    model_id = models.get(simple_name, simple_name)
-    if model_id == '':
-        model_id = simple_name # 重命名为空表示使用原始名称
+        # 用delay=-1标识被禁用的模型
+        if delay or disabled:
+            model_delays[name] = -1 if disabled else delay
 
-    return model_id
+    return model_to_short_name, short_name_to_model, model_delays
+
+g_model_to_short_name, g_short_name_to_model, g_model_delays = _load_model_from_config()
+
+def list_models():
+    models = list(g_model_to_short_name.keys())
+    return [m for m in models if get_model_query_delay(m) != -1]
+
+def get_model(model_id_or_alias, fail_on_unknown=True):
+    model = g_short_name_to_model.get(model_id_or_alias)
+    if fail_on_unknown and model is None:
+        raise ValueError(f'Unknown model name {model_id_or_alias}')
+    
+    return model or model_id_or_alias
 
 def get_model_short_name(model_id):
-  for short_name, full_name in models.items():
-    if full_name == model_id:
-      return short_name
-
-  return model_id
+  return g_model_to_short_name.get(model_id, model_id)
 
 llm_storages = {}
 def get_storage(use_case):
@@ -70,7 +65,9 @@ def get_storage(use_case):
     return llm_storages[use_case]
 
 def get_model_query_delay(model_id_or_alias):
-    return model_query_delays.get(model_id_or_alias, None) or model_query_delays.get(models_aliases.get(model_id_or_alias, ''), 0)
+    model = get_model(model_id_or_alias, fail_on_unknown=False)
+
+    return g_model_delays.get(model_id_or_alias, 0)
 
 def chat(prompt, contents, model_id, **kwargs):
     response, reasoning, filename = chat_impl(prompt, contents, model_id, **kwargs)
@@ -86,6 +83,11 @@ def chat_impl(prompt,
               prompt_follow_contents=False,
               retries=3,
               throw_ex=True):
+    
+    delay = get_model_query_delay(model_id)
+    if delay == -1:
+        raise ValueError(f'Model {model_id} is disabled')
+    
     client = OpenAI(
         api_key=config.get("OPENAI_API_KEY"),
         base_url=config.get('OPENAI_API_BASE'),
@@ -157,3 +159,39 @@ def chat_impl(prompt,
         storage_obj.save(filename[:-len('.txt')] + '.input.txt', contents)
                                                                   
     return response, reasoning, filename
+
+if __name__ == '__main__':
+    # Quick test of models
+
+    client = OpenAI(
+        api_key=config.get("OPENAI_API_KEY"),
+        base_url=config.get('OPENAI_API_BASE'),
+    )
+
+    upstream_models = client.models.list().data
+    upstream_models = {m.id: m.owned_by for m in upstream_models}
+
+    for model in list_models():
+        short_name = get_model_short_name(model)
+        
+        owned_by = upstream_models.get(model)
+        if not owned_by:
+            print(f'model {model} not found in upstream models')
+            continue
+        else:
+            print(f'{model} ({short_name}), {owned_by}. testing...', end=' ')
+
+            try:
+                delay = get_model_query_delay(model)
+                t0 = time.time()
+                if delay:
+                    time.sleep(delay)
+                response = chat('Please response with "OK" and nothing else.', '', model, save=False, retries=0)
+                t1 = time.time()
+                if response.strip() == 'OK':
+                    print(f'Done, {t1 - t0:.2f}s')
+                else:
+                    print(f'Model return response of length {len(response)} ({response[:32]}...), {t1 - t0:.2f}s')
+            except OpenAIError as ex:
+                print(f'Failed: {ex}')
+                
