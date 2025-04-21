@@ -51,9 +51,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    model_id = llm.get_model(args.model)
-    model_id_alt = llm.get_model(args.model_alt)
-
     params = dict(args.params)
     params['min_comments'] = args.min_comments
 
@@ -150,6 +147,9 @@ if __name__ == "__main__":
     article_urls = dict(article_urls)
 
     for seq, (comment_url, comments) in tqdm(enumerate(zip(urls, article_comments))):
+        model_id = llm.get_model(args.model)
+        model_id_alt = llm.get_model(args.model_alt)
+
         contents = ''
 
         url = article_urls.get(seq)

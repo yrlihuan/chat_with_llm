@@ -1,4 +1,6 @@
+import fnmatch
 import os.path
+import random
 import time
 
 from openai import OpenAI, OpenAIError
@@ -19,25 +21,26 @@ def _load_model_from_config():
     model_delays = {}
 
     for data in models:
-        name = data.get('name')
+        model_id = data.get('name')
         alias = data.get('alias')
         delay = data.get('delay')
         disabled = data.get('disabled', False)
 
         if isinstance(alias, list):
-            model_to_short_name[name] = alias[0]
+            model_to_short_name[model_id] = alias[0] if len(alias) > 0 else model_id
+            
             for a in alias:
-                short_name_to_model[a] = name
+                short_name_to_model[a] = model_id
         elif isinstance(alias, str):
-            model_to_short_name[name] = alias
-            short_name_to_model[alias] = name
+            model_to_short_name[model_id] = alias
+            short_name_to_model[alias] = model_id
         else:
-            model_to_short_name[name] = name
-            short_name_to_model[name] = name
+            model_to_short_name[model_id] = model_id
+            short_name_to_model[model_id] = model_id
 
         # 用delay=-1标识被禁用的模型
         if delay or disabled:
-            model_delays[name] = -1 if disabled else delay
+            model_delays[model_id] = -1 if disabled else delay
 
     return model_to_short_name, short_name_to_model, model_delays
 
@@ -48,14 +51,36 @@ def list_models():
     return [m for m in models if get_model_query_delay(m) != -1]
 
 def get_model(model_id_or_alias, fail_on_unknown=True):
-    model = g_short_name_to_model.get(model_id_or_alias)
+    if model_id_or_alias == 'random':
+        models = list_models()
+        model = random.choice(models)
+    elif '*' in model_id_or_alias:
+        models = list_models()
+        models = fnmatch.filter(models, model_id_or_alias)
+        if len(model) == 0:
+            raise ValueError(f'No model found for {model_id_or_alias}')
+        
+        model = random.choice(models)
+    else:
+        model = g_short_name_to_model.get(model_id_or_alias)
+
     if fail_on_unknown and model is None:
         raise ValueError(f'Unknown model name {model_id_or_alias}')
     
     return model or model_id_or_alias
 
 def get_model_short_name(model_id):
-  return g_model_to_short_name.get(model_id, model_id)
+    return g_model_to_short_name.get(model_id, model_id)
+
+def get_model_from_save_name(save_name):
+    for model_id in g_model_to_short_name.keys():
+        if get_model_save_name(model_id) == save_name:
+            return model_id
+        
+    return None
+
+def get_model_save_name(model_id):
+    return model_id.replace("/", "_").replace(":", "_")
 
 llm_storages = {}
 def get_storage(use_case):
@@ -136,7 +161,7 @@ def chat_impl(prompt,
     if save:
         storage_obj = get_storage(use_case)
 
-        model_save_name = model_id.replace("/", "_").replace(":", "_")
+        model_save_name = get_model_save_name(model_id)
         if save_date is None:
             timestamp = time.strftime('%Y%m%d_%H%M%S')
         else:
@@ -173,7 +198,7 @@ if __name__ == '__main__':
 
     for model in list_models():
         short_name = get_model_short_name(model)
-        
+
         owned_by = upstream_models.get(model)
         if not owned_by:
             print(f'model {model} not found in upstream models')
