@@ -14,7 +14,7 @@ __all__ = ['list_models', 'get_model', 'get_storage', 'get_model_query_delay', '
 
 #g_model_to_short_name = 
 def _load_model_from_config():
-    models = config.get('OPENAI_MODELS')
+    models = config.get_model_configs()
 
     model_to_short_name = {}
     short_name_to_model = {}

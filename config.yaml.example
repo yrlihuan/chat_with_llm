@@ -1,15 +1,6 @@
 # openai api
 OPENAI_API_KEY: "sk-xxxyyyzzz"
 OPENAI_API_BASE: "https://api.openai.com/v1"
-OPENAI_MODELS:
-  - name: 'gpt4.1'
-  - name: 'gemini-2.5-pro-preview-0.3-25'
-    alias: 'gemini-2.5-pro'
-    delay: 30
-  - name: 'gemini-2.0-pro-exp-0.3-25'
-    alias: ['gemini-2.0-pro', 'gemini-2.0-pro-exp']
-    delay: 30
-    disabled: True
 
 # downsub api
 DOWNSUB_API_KEY: "kkkhhhjjj"
