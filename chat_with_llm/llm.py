@@ -106,7 +106,7 @@ def chat_impl(prompt,
               save_date=None,
               sep='\n',
               prompt_follow_contents=False,
-              retries=3,
+              retries=0,
               throw_ex=True):
     
     delay = get_model_query_delay(model_id)

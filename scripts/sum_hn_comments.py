@@ -43,7 +43,6 @@ if __name__ == "__main__":
 
     parser.add_argument('--llm_use_case', type=str, default='sum_hn_comments', help='The use case for the llm model')
     parser.add_argument('--model_alt', default='gemini-2.5-pro', help='The alternative model to use for generating summary')
-    parser.add_argument('--model_alt_threshold', default=256*1024, type=int, help='The threshold to use the alternative model')
     parser.add_argument('--daily_topn', type=int, default=15, help='The number of daily top articles to retrieve')
     parser.add_argument('--min_comments', type=int, default=30, help='The minimum number of comments to retrieve')
     parser.add_argument('--skip_processed', action='store_true', default=False, help='Skip processed articles')
@@ -146,7 +145,12 @@ if __name__ == "__main__":
 
     article_urls = dict(article_urls)
 
-    for seq, (comment_url, comments) in tqdm(enumerate(zip(urls, article_comments))):
+    seq = 0
+    seq_retry = False
+    while seq < len(urls):
+        comment_url = urls[seq]
+        comments = article_comments[seq]
+    
         model_id = llm.get_model(args.model)
         model_id_alt = llm.get_model(args.model_alt)
 
@@ -162,18 +166,32 @@ if __name__ == "__main__":
 
         contents += comments + '\n'
 
-        model_to_use = model_id
-        if len(contents) > args.model_alt_threshold:
-            # 如果内容过长, 使用更大的模型
-            model_to_use = model_id_alt
-
-        message, reasoning, filename = llm.chat_impl(
-            prompt=prompt,
-            contents=contents,
-            model_id=model_to_use,
-            use_case=args.llm_use_case,
-            save=True)
+        model_to_use = model_id if not seq_retry else model_id_alt
         
-        if seq == 0:
-            print(contents)
-            print(message)
+        t0 = time.time()
+        try:
+            print(f'Summarizing {comment_url} with {model_to_use} ({len(contents)} bytes) ...', end=' ')
+            message, reasoning, filename = llm.chat_impl(
+                prompt=prompt,
+                contents=contents,
+                model_id=model_to_use,
+                use_case=args.llm_use_case,
+                save=True)
+        except Exception as e:
+            
+            print(f'Failed!')
+            print(f'Error: {e}')
+
+            # 如果失败了, 先尝试使用备用模型
+            if not seq_retry:
+                seq_retry = True
+                continue
+            else:
+                seq += 1
+                seq_retry = False
+                continue
+
+        t1 = time.time()
+        seq += 1
+        seq_retry = False
+        print(f'Success ({t1 - t0:.2f} seconds).')
