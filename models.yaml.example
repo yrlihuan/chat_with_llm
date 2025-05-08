@@ -1,8 +1,16 @@
+# alias用于查找模型. 一个alias仅允许对应一个没有disable的模型. 一个模型可以有多个alias, 便于用户输入
+# display如果指定, 在显式是优先采用该名称. 允许多个模型使用同一个display name
 - name: 'gpt4.1'
-- name: 'gemini-2.5-pro-preview-0.3-25'
-alias: 'gemini-2.5-pro'
-delay: 30
-- name: 'gemini-2.0-pro-exp-0.3-25'
-alias: ['gemini-2.0-pro', 'gemini-2.0-pro-exp']
-delay: 30
-disabled: True
+- name: 'gemini-2.5-pro-preview-03-25'
+  alias: 'gemini-2.5-pro'
+  display: 'gemini-2.5-pro'
+  delay: 30
+  disabled: True
+- name: 'gemini-2.5-pro-exp-03-25'
+  alias: ['gemini-2.5-pro-exp', 'gemini-2.5-pro-free']
+  display: 'gemini-2.5-pro'
+  delay: 30
+- name: 'gemini-2.5-pro-preview-05-06'
+  alias: 'gemini-2.5-pro'
+  display: 'gemini-2.5-pro'
+  delay: 30

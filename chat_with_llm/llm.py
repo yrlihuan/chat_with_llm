@@ -12,43 +12,55 @@ CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 
 __all__ = ['list_models', 'get_model', 'get_storage', 'get_model_query_delay', 'chat', 'reason']
 
-#g_model_to_short_name = 
+# 所有enabled模型都出现在g_model_delays中
+# 所有模型(即使disabled的模型)都出现在g_model_to_display_name中
+# 只有具有alias的模型才出现在g_alias_to_model中
 def _load_model_from_config():
     models = config.get_model_configs()
 
-    model_to_short_name = {}
-    short_name_to_model = {}
+    model_to_display_name = {}
+    alias_to_model = {}
     model_delays = {}
 
     for data in models:
         model_id = data.get('name')
         alias = data.get('alias')
-        delay = data.get('delay')
+        display = data.get('display')
+        delay = float(data.get('delay', 0))
         disabled = data.get('disabled', False)
 
-        if isinstance(alias, list):
-            model_to_short_name[model_id] = alias[0] if len(alias) > 0 else model_id
+        # 显示名的最低优先级
+        model_to_display_name[model_id] = model_id
+
+        if isinstance(alias, str):
+            alias = [alias]
+
+        if alias:
+            model_to_display_name[model_id] = alias[0] if len(alias) > 0 else model_id
             
-            for a in alias:
-                short_name_to_model[a] = model_id
-        elif isinstance(alias, str):
-            model_to_short_name[model_id] = alias
-            short_name_to_model[alias] = model_id
-        else:
-            model_to_short_name[model_id] = model_id
-            short_name_to_model[model_id] = model_id
+            if not disabled:
+                for a in alias:
+                    if a in alias_to_model:
+                        print(f'Warning: alias {a} already exists, overwriting with {model_id}')
+
+                    alias_to_model[a] = model_id
+
+        if display:
+            model_to_display_name[model_id] = display
 
         # 用delay=-1标识被禁用的模型
-        if delay or disabled:
-            model_delays[model_id] = -1 if disabled else delay
+        if disabled:
+            model_delays[model_id] = -1
+        else:
+            model_delays[model_id] = delay
 
-    return model_to_short_name, short_name_to_model, model_delays
+    return model_to_display_name, alias_to_model, model_delays
 
-g_model_to_short_name, g_short_name_to_model, g_model_delays = _load_model_from_config()
+g_model_to_display_name, g_alias_to_model, g_model_delays = _load_model_from_config()
 
 def list_models():
-    models = list(g_model_to_short_name.keys())
-    return [m for m in models if get_model_query_delay(m) != -1]
+    models = [m for m, delay in g_model_delays.items() if delay != -1]
+    return models
 
 def get_model(model_id_or_alias, fail_on_unknown=True):
     if model_id_or_alias == 'random':
@@ -62,18 +74,21 @@ def get_model(model_id_or_alias, fail_on_unknown=True):
         
         model = random.choice(models)
     else:
-        model = g_short_name_to_model.get(model_id_or_alias)
-
-    if fail_on_unknown and model is None:
+        model = g_alias_to_model.get(model_id_or_alias, model_id_or_alias)
+        
+    delay = g_model_delays.get(model)
+    if delay is None and fail_on_unknown:
         raise ValueError(f'Unknown model name {model_id_or_alias}')
+    if delay == -1:
+        raise ValueError(f'Model {model} is disabled')
     
-    return model or model_id_or_alias
+    return model
 
 def get_model_short_name(model_id):
-    return g_model_to_short_name.get(model_id, model_id)
+    return g_model_to_display_name.get(model_id, model_id)
 
 def get_model_from_save_name(save_name):
-    for model_id in g_model_to_short_name.keys():
+    for model_id in g_model_to_display_name.keys():
         if get_model_save_name(model_id) == save_name:
             return model_id
         
