@@ -33,7 +33,7 @@ if __name__ == "__main__":
               '接下来简单总结文章的内容, 然后总结评论中出现热门观点, 并将热门观点的关键词转化为链接(地址: https://news.ycombinator.com/item?id=<id>). '
               '"文章"和"评论"的标题使用三级标签(h3). 使用中文, 不限字数. '
               '下面是一个输出的格式的例子: '
-              '*   部分评论者认同文章观点，觉得《黑镜》的[持续悲观缺乏细微差别](https://news.ycombinator.com/item?id=43649154)，让人感觉扁平，尤其是后期剧集。'
+              '*   部分评论者认同文章观点，觉得《黑镜》的[持续悲观缺乏细微差别](https://news.ycombinator.com/item?id=43649154)，让人感觉扁平，尤其是后期剧集。',
 
         'v5': '下面是hackernews上面的文章以及hackernews用户针对文章进行的讨论. 前面是文章链接和评论链接, 然后是文章的内容(有可能缺失). '
               '用长==连线分割后, 是hackernews的评论. 请先输出"## [文章标题](文章链接) ([HN评论](评论链接))". '
@@ -41,7 +41,7 @@ if __name__ == "__main__":
               '类似于"有人指出 LLM 缺乏对人的理解能力, 却[表现得好像拥有这种能力](https://news.ycombinator.com/item?id=44128451)." 和 '
               '"许多人同意 LLM 在编程中扮演了"[智能橡皮鸭](https://news.ycombinator.com/item?id=44128116)"的角色, 帮助开发者理清思路, 甚至有时能提出一些改进意见. '
               '有人将其比作一个知识渊博但缺乏[架构常识的初级开发者](https://news.ycombinator.com/item?id=44129251).". '
-              '"文章"和"评论"的标题使用三级标签(h3). 使用中文, 不限字数.'
+              '"文章"和"评论"的标题使用三级标签(h3). 使用中文, 不限字数.',
     }
 
     parser.add_argument('-c', '--comment_id', type=str, default=None, help='The home URL to retrieve news from')
