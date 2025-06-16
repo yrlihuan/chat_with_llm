@@ -109,7 +109,12 @@ class Crawl4AI(online_content.AsyncOnlineContent):
             browser_params['viewport_width'] = 2186
             browser_params['viewport_height'] = 1776
 
-            
+        if self.opt_debug:
+            for opt in dir(self):
+                if opt.startswith('opt_') and hasattr(self, opt):
+                    value = getattr(self, opt)
+                    print('crawl4ai option:', opt, value)
+
         browser_params['user_agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'
         self.browser_config = crawl4ai.BrowserConfig(**browser_params)
 

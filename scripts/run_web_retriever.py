@@ -75,12 +75,12 @@ if __name__ == '__main__':
     parser_retrieve.add_argument('retriever', type=str, default='', help='Name of the online retriever')
     parser_retrieve.add_argument('url_or_id')
     parser_retrieve.add_argument('--print_results', type=bool_converter, default=True)
-    parser_retrieve.add_argument('--params', nargs='+', type=dict_item_converter, default=[], help='Parameters for the online retriever')
+    parser_retrieve.add_argument('--params', nargs='+', type=dict_item_converter, default=[], help='Parameters for the online retriever. Use key=value format, e.g. --params key1=value1 key2=value2')
 
     parser_retrieve_many = subparsers.add_parser('retrieve_many', help='Retrieve content for many urls')
     parser_retrieve_many.add_argument('retriever', type=str, default='', help='Name of the online retriever')   
     parser_retrieve_many.add_argument('-n', type=int, default=50, help='Number of urls to retrieve')
-    parser_retrieve_many.add_argument('--params', nargs='+', type=dict_item_converter, default=[], help='Parameters for the online retriever')
+    parser_retrieve_many.add_argument('--params', nargs='+', type=dict_item_converter, default=[], help='Parameters for the online retriever. Use key=value format, e.g. --params key1=value1 key2=value2')
 
     args = parser.parse_args()
     args.params = {k: v for k, v in args.params} if args.params else {}
