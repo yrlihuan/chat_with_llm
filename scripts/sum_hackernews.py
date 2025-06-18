@@ -92,10 +92,13 @@ if __name__ == "__main__":
         'v2': '以下是今天hackernews的文章. 文章之间用长--连线分割. 请根据内容以及每篇文章的评论数以及你的理解, '
               '选取五到八篇最有新意和知识性的文章, 总结其观点. 每个文章输出的时候先输出[文章标题](链接)'
               '以及[评论数](评论链接). 输出中文, 不限字数. ',
+        'v3': '以下是今天hackernews的文章. 文章之间用长--连线分割. 请根据内容以及每篇文章的评论数以及你的理解, '
+              '选取五到八篇最有新意和知识性的文章, 总结其观点. 每个文章输出的时候先输出[文章标题](链接)'
+              '以及[评论数](评论链接). 输出简体中文, 不限字数. ',
     }
 
     parser.add_argument('-m', '--model', type=str, default='gemini-2.5-pro', help='The model to use for generating summary')
-    parser.add_argument('-p', '--prompt', default='v2')
+    parser.add_argument('-p', '--prompt', default='v3')
     parser.add_argument('-c', '--min_comments', type=int, default=30, help='Minimum number of comments to consider reading the article')
     parser.add_argument('-d', '--dedup_n', type=int, default=4, help='Remove duplicate articles from the last n runs.') 
     parser.add_argument('--llm_use_case', type=str, default='sum_hn', help='The use case for the llm model')
