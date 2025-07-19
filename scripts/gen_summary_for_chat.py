@@ -14,6 +14,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Generate summary for chat history')
     parser.add_argument('-m', '--model', type=str, default='ds-chat', help='The model to use for generating summary')
+    parser.add_argument('-m2', '--model2', type=str, default='gemini-2.5-pro', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', type=str, default='v2')
     parser.add_argument('-u', '--use_cases', type=lambda s: s.split(','), default=[])
 
@@ -42,6 +43,8 @@ if __name__ == '__main__':
         print(f'{use_case}: {len(to_be_summarized)}个聊天记录待摘要')
 
         model_id = llm.get_model(args.model)
+        model_id2 = llm.get_model(args.model2) if args.model2 else None
+
         for key in to_be_summarized:
             print(f'正在处理 {key}...')
             contents = storage_obj.load(key + '.txt')
@@ -55,5 +58,17 @@ if __name__ == '__main__':
                 retries=1,
                 throw_ex=False
             )
+
+            if answer is None and model_id2:
+                print(f'使用备用模型 {model_id2} 处理 {key}...')
+                answer = llm.chat(
+                    prompt=prompt,
+                    contents=contents,
+                    model_id=model_id2,
+                    use_case='gen_conversation_summary',
+                    save=False,
+                    retries=1,
+                    throw_ex=False
+                )
 
             storage_obj.save(key + '.summary.txt', answer.strip() + '\n')
