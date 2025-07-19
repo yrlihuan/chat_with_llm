@@ -163,7 +163,7 @@ def chat_impl(prompt,
                 if throw_ex:
                     raise ex
                 else:
-                    return None, None
+                    return None, None, None
 
     response = chat_completion.choices[0].message.content
 
