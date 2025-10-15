@@ -71,17 +71,24 @@ def get_plain_text_files(storage_obj, n: int = 10) -> List[str]:
     # Filter for .plain.txt files
     plain_files = [key for key in keys if key.endswith('.plain.txt')]
 
-    # Sort by modification time (newest first)
-    plain_files_with_time = []
+    # Sort by filename timestamp (newest first)
+    # Extract timestamp from filename (format: YYYYMMDD_HHMMSS)
+    plain_files_with_timestamp = []
     for key in plain_files:
-        file_path = os.path.join(storage_obj.storage_path, key)
-        if os.path.exists(file_path):
-            mtime = os.path.getmtime(file_path)
-            plain_files_with_time.append((key, mtime))
+        # Extract the timestamp part from filename
+        # Example: "20250901_153902_deepseek-chat.plain.txt" -> "20250901_153902"
+        filename = key.replace('.plain.txt', '')
+        parts = filename.split('_')
+        if len(parts) >= 2:
+            timestamp_str = f"{parts[0]}_{parts[1]}"
+            plain_files_with_timestamp.append((key, timestamp_str))
+        else:
+            # If filename doesn't match expected format, use filename as timestamp
+            plain_files_with_timestamp.append((key, filename))
 
-    # Sort by modification time (newest first) and take top n
-    plain_files_with_time.sort(key=lambda x: x[1], reverse=True)
-    return [key for key, _ in plain_files_with_time[:n]]
+    # Sort by timestamp (newest first)
+    plain_files_with_timestamp.sort(key=lambda x: x[1], reverse=True)
+    return [key for key, _ in plain_files_with_timestamp[:n]]
 
 
 def process_use_case(use_case: str, n: int, api_url: str, timeout: int = 1800, dry_run: bool = False):
@@ -168,8 +175,8 @@ def main():
     )
     parser.add_argument(
         '--api-url',
-        default='http://10.20.1.3',
-        help='TTS API服务器地址 (默认: http://10.20.1.3)'
+        default='http://10.20.1.3:8000',
+        help='TTS API服务器地址 (默认: http://10.20.1.3:8000)'
     )
     parser.add_argument(
         '--timeout',
