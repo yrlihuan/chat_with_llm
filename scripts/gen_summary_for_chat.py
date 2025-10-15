@@ -32,7 +32,7 @@ if __name__ == '__main__':
         summaries = set()
 
         for key in keys:
-            if key.endswith('.input.txt'):
+            if key.endswith('.input.txt') or key.endswith('.plain.txt'):
                 continue
             elif key.endswith('.summary.txt'):
                 summaries.add(key[:-len('.summary.txt')])
