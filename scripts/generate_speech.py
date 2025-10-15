@@ -17,7 +17,7 @@ from typing import List
 from chat_with_llm import storage
 
 
-def generate_speech(api_url: str, text: str, output_path: str, timeout: int = 1800) -> bool:
+def generate_speech(api_url: str, text: str, output_path: str, wav_name: str = None, timeout: int = 1800) -> bool:
     """Generate speech and save to file."""
     try:
         # Prepare request data
@@ -25,10 +25,14 @@ def generate_speech(api_url: str, text: str, output_path: str, timeout: int = 18
             "text": text,
             "output_format": "mp3"
         }
+        if wav_name:
+            data["wav_name"] = wav_name
 
         print(f"正在生成语音...")
         print(f"文本长度: {len(text)} 字符")
         print(f"输出格式: mp3")
+        if wav_name:
+            print(f"使用语音: {wav_name}")
 
         start_time = time.time()
 
@@ -91,7 +95,7 @@ def get_plain_text_files(storage_obj, n: int = 10) -> List[str]:
     return [key for key, _ in plain_files_with_timestamp[:n]]
 
 
-def process_use_case(use_case: str, n: int, api_url: str, timeout: int = 1800, dry_run: bool = False):
+def process_use_case(use_case: str, n: int, api_url: str, wav_name: str = None, timeout: int = 1800, dry_run: bool = False):
     """Process a single use case."""
     print(f"\n处理用例: {use_case}")
     print("=" * 50)
@@ -130,6 +134,8 @@ def process_use_case(use_case: str, n: int, api_url: str, timeout: int = 1800, d
                 print(f"📋  将处理 (预览): {key}")
                 print(f"    文本长度: {len(text_content)} 字符")
                 print(f"    输出文件: {mp3_key}")
+                if wav_name:
+                    print(f"    使用语音: {wav_name}")
                 processed_count += 1
             else:
                 print(f"\n处理文件: {key}")
@@ -140,6 +146,7 @@ def process_use_case(use_case: str, n: int, api_url: str, timeout: int = 1800, d
                     api_url=api_url,
                     text=text_content,
                     output_path=mp3_path,
+                    wav_name=wav_name,
                     timeout=timeout
                 )
 
@@ -189,6 +196,10 @@ def main():
         action='store_true',
         help='预览模式，显示将要处理的内容而不实际生成语音'
     )
+    parser.add_argument(
+        '--wav-name',
+        help='WAV文件名称 (可选，使用默认值如果未指定)'
+    )
 
     args = parser.parse_args()
 
@@ -197,6 +208,8 @@ def main():
     print(f"API地址: {args.api_url}")
     print(f"每个用例处理文件数: {args.n}")
     print(f"超时设置: {args.timeout} 秒")
+    if args.wav_name:
+        print(f"使用语音: {args.wav_name}")
     print("=" * 50)
 
     total_processed = 0
@@ -208,6 +221,7 @@ def main():
             use_case=use_case,
             n=args.n,
             api_url=args.api_url,
+            wav_name=args.wav_name,
             timeout=args.timeout,
             dry_run=args.dry_run
         )
