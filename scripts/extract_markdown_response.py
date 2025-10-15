@@ -44,7 +44,7 @@ def transform_markdown_to_plain_text(markdown_content: str) -> str:
     - Remove markdown formatting (bold, italic, etc.)
     - Handle headers and other markdown elements
     - Replace --- separators with two blank lines
-    - Add punctuation to lines without proper sentence-ending punctuation
+    - (removed)Add punctuation to lines without proper sentence-ending punctuation
     """
     if not markdown_content:
         return ""
@@ -94,8 +94,8 @@ def transform_markdown_to_plain_text(markdown_content: str) -> str:
                 in_list = False
 
             # Add punctuation to lines without proper sentence-ending punctuation
-            if stripped and not re.search(r'[.。!！?？;；…，,]$', stripped):
-                line = line + '.'
+            #if stripped and not re.search(r'[.。!！?？;；…，,]$', stripped):
+            #    line = line + '.'
             transformed_lines.append(line)
 
     return '\n'.join(transformed_lines)
