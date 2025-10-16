@@ -11,10 +11,45 @@ import os
 import sys
 import requests
 import time
+import fcntl
+import errno
 from pathlib import Path
 from typing import List
 
 from chat_with_llm import storage
+
+
+class ProcessLock:
+    """Process lock to ensure only one instance runs at a time."""
+
+    def __init__(self, lock_file: str = "/tmp/generate_speech.lock"):
+        self.lock_file = lock_file
+        self.lock_fd = None
+
+    def acquire(self) -> bool:
+        """Acquire the process lock."""
+        try:
+            self.lock_fd = open(self.lock_file, 'w')
+            fcntl.flock(self.lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except (IOError, OSError) as e:
+            if e.errno == errno.EAGAIN:
+                print(f"✗ 另一个 generate_speech.py 进程正在运行中")
+                print(f"请等待当前进程完成或检查是否有其他实例在运行")
+                return False
+            else:
+                print(f"✗ 获取进程锁时发生错误: {str(e)}")
+                return False
+
+    def release(self):
+        """Release the process lock."""
+        if self.lock_fd:
+            try:
+                fcntl.flock(self.lock_fd, fcntl.LOCK_UN)
+                self.lock_fd.close()
+                os.unlink(self.lock_file)
+            except:
+                pass
 
 
 def generate_speech(api_url: str, text: str, output_path: str, wav_name: str = None, timeout: int = 1800) -> bool:
@@ -203,6 +238,14 @@ def main():
 
     args = parser.parse_args()
 
+    # Check process lock at script start (skip for dry-run)
+    if not args.dry_run:
+        process_lock = ProcessLock()
+        if not process_lock.acquire():
+            sys.exit(1)
+    else:
+        process_lock = None
+
     print("语音生成工具")
     print("=" * 50)
     print(f"API地址: {args.api_url}")
@@ -235,6 +278,10 @@ def main():
     print(f"跳过: {total_skipped}")
     print(f"错误: {total_errors}")
     print("=" * 50)
+
+    # Release process lock if acquired
+    if process_lock:
+        process_lock.release()
 
     if total_errors > 0:
         sys.exit(1)
