@@ -98,10 +98,13 @@ if __name__ == "__main__":
         'v4': '以下是今天hackernews的文章. 文章之间用长--连线分割. 请根据内容以及每篇文章的评论数以及你的理解, '
               '选取最多八篇文章, 总结其观点. 总结的时候尽可能包括文章中的重点信息. 每个文章输出的时候先输出[文章标题](链接)'
               '以及[评论数](评论链接). 输出简体中文, 不限字数. ', # 为ds-chat v3.1调整. 但其总结依然比较简约, 故未启用
+        'v5': '以下是今天hackernews的文章. 文章之间用长--连线分割. 请根据内容以及每篇文章的评论数以及你的理解, '
+              '选取八篇最有新意和知识性的文章, 总结其内容. 每个文章输出的时候先输出[文章标题](链接)以及[评论数](评论链接). '
+              '每篇文章的摘要可以分段, 控制每篇文章总结字数在350到400. 输出简体中文(包括将文章标题翻译成中文).',
     }
 
-    parser.add_argument('-m', '--model', type=str, default='gemini-2.5-pro', help='The model to use for generating summary')
-    parser.add_argument('-p', '--prompt', default='v3')
+    parser.add_argument('-m', '--model', type=str, default='ds-chat', help='The model to use for generating summary')
+    parser.add_argument('-p', '--prompt', default='v5')
     parser.add_argument('-c', '--min_comments', type=int, default=30, help='Minimum number of comments to consider reading the article')
     parser.add_argument('-d', '--dedup_n', type=int, default=4, help='Remove duplicate articles from the last n runs.') 
     parser.add_argument('--llm_use_case', type=str, default='sum_hn', help='The use case for the llm model')
