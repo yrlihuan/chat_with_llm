@@ -100,7 +100,7 @@ if __name__ == '__main__':
     }
 
     parser.add_argument('youtube_link', type=str, help='The youtube video link')
-    parser.add_argument('-m', '--model', type=str, default='gemini-2.5-pro', help='The model to use for generating summary')
+    parser.add_argument('-m', '--model', type=str, default='gemini-3.0-flash', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', type=str, default='v2', help='The prompt to use for generating summary')
 
     args = parser.parse_args()
@@ -179,10 +179,12 @@ if __name__ == '__main__':
                 'korean', 'korean_auto',
                 'french', 'french_auto']
     contents = None
+    contents_type = None
     for p in priority:
         for sub in subs:
             if sub[0] == p:
                 contents = sub[2]
+                contents_type = sub[1]
                 break
 
         if contents:
@@ -190,7 +192,10 @@ if __name__ == '__main__':
 
     assert contents is not None, 'subtitle downloader returns a list of subtitles, but no subtitle is selected'
 
-    contents_text = youtube_subtitle_smart_convert(contents)
+    if contents_type == 'srt':
+        contents_text = youtube_subtitle_smart_convert(contents)
+    else:
+        contents_text = contents
 
     print(f'Parsing subtitle using {model_id}.')
     contents_url = f'视频地址: {youtube_link}\n'
