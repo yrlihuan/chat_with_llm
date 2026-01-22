@@ -22,9 +22,6 @@ class Config():
             return self.cfg[key]
         else:
             raise ConfigNotFoundError(f'Config key {key} not found in config.yaml')
-    
-_the_config = Config('config.yaml')
-_the_models_config = Config('models.yaml')
 
 def get(name, default=None):
     try:
@@ -41,3 +38,12 @@ def get(name, default=None):
 
 def get_model_configs():
     return copy.deepcopy(_the_models_config.cfg)
+
+def set_environ():
+    for key, value in _the_config.cfg.items():
+        os.environ[key] = str(value)
+
+_the_config = Config('config.yaml')
+_the_models_config = Config('models.yaml')
+set_environ()
+

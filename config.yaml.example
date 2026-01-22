@@ -10,3 +10,7 @@ ONLINE_CONTENT_WORKERS: 2
 
 # storage base dir
 STORAGE_BASE_DIR: "~/.chat_with_llm"
+
+LANGFUSE_SECRET_KEY: 'sk-langfuse'
+LANGFUSE_PUBLIC_KEY: 'pk-langfuse'
+LANGFUSE_BASE_URL: 'https://us.cloud.langfuse.com'

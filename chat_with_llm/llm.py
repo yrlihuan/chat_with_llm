@@ -3,7 +3,10 @@ import os.path
 import random
 import time
 
-from openai import OpenAI, OpenAIError
+import langfuse
+from langfuse.openai import openai
+
+#from openai import OpenAI, OpenAIError
 
 from chat_with_llm import config
 from chat_with_llm import storage
@@ -113,6 +116,7 @@ def chat(prompt, contents, model_id, **kwargs):
     response, reasoning, filename = chat_impl(prompt, contents, model_id, **kwargs)
     return response
 
+@langfuse.observe()
 def chat_impl(prompt,
               contents,
               model_id,
@@ -128,7 +132,7 @@ def chat_impl(prompt,
     if delay == -1:
         raise ValueError(f'Model {model_id} is disabled')
     
-    client = OpenAI(
+    client = openai.OpenAI(
         api_key=config.get("OPENAI_API_KEY"),
         base_url=config.get('OPENAI_API_BASE'),
     )
@@ -147,7 +151,7 @@ def chat_impl(prompt,
                 ],
                 model=model_id,
             )
-        except OpenAIError as ex:
+        except openai.OpenAIError as ex:
             if retry_cnt < retries:
                 print('openai api failed, retrying...')
                 print(ex)
@@ -203,7 +207,7 @@ def chat_impl(prompt,
 if __name__ == '__main__':
     # Quick test of models
 
-    client = OpenAI(
+    client = openai.OpenAI(
         api_key=config.get("OPENAI_API_KEY"),
         base_url=config.get('OPENAI_API_BASE'),
     )
@@ -232,6 +236,6 @@ if __name__ == '__main__':
                     print(f'Done, {t1 - t0:.2f}s')
                 else:
                     print(f'Model return response of length {len(response)} ({response[:32]}...), {t1 - t0:.2f}s')
-            except OpenAIError as ex:
+            except openai.OpenAIError as ex:
                 print(f'Failed: {ex}')
                 
