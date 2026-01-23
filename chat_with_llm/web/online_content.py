@@ -20,7 +20,7 @@ class OnlineContent(ABC):
         self.force_fetch = params.get('force_fetch', False)
         self.force_parse = params.get('force_parse', False)
         self.update_cache = params.get('update_cache', True)
-        self.num_workers = params.get('num_workers', config.get('ONLINE_CONTENT_WORKERS', 2))
+        self.num_workers = params.get('num_workers', int(config.get('ONLINE_CONTENT_WORKERS', 2)))
 
     def retrieve(self, url_or_id):
         return self.retrieve_many([url_or_id])[0]
