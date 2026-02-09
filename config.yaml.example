@@ -14,3 +14,7 @@ STORAGE_BASE_DIR: "~/.chat_with_llm"
 LANGFUSE_SECRET_KEY: 'sk-langfuse'
 LANGFUSE_PUBLIC_KEY: 'pk-langfuse'
 LANGFUSE_BASE_URL: 'https://us.cloud.langfuse.com'
+
+# linkseek crawler service
+LINKSEEK_BASE_URL: "http://localhost:8000"
+LINKSEEK_PROXY: ""  # proxy name configured in LinkSeek's proxies.yaml

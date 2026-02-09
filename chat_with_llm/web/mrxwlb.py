@@ -1,9 +1,9 @@
 import datetime as dt
 
 from bs4 import BeautifulSoup
-import requests
 
 from chat_with_llm.web import online_content
+from chat_with_llm.web import linkseek
 
 # 每日新闻联播
 # 网址: https://cn.govopendata.com/xinwenlianbo/20180331/
@@ -19,7 +19,7 @@ class MRXWLB(online_content.OnlineContent):
     def url2id(self, url):
         if not url.startswith(MRXWLB.BASE_URL):
             raise RuntimeError(f'Expect url to start with {MRXWLB.BASE_URL}, got {url}')
-        
+
         url_parts = url.split('/')
         if url_parts[-1] == '':
             return url_parts[-2]
@@ -29,9 +29,9 @@ class MRXWLB(online_content.OnlineContent):
     def id2url(self, site_id):
         if len(site_id) != 8 and site_id.isdigit():
             raise RuntimeError('Expect site_id to be of format YYYYMMDD, got %s' % site_id)
-        
+
         return f'{MRXWLB.BASE_URL}{site_id}/'
-    
+
     def list(self, n):
         t = dt.datetime.now() - dt.timedelta(hours=20)
         date_end = self.params.get('date_end', t.strftime('%Y%m%d'))
@@ -50,24 +50,20 @@ class MRXWLB(online_content.OnlineContent):
         return urls
 
     def fetch(self, url):
-        response = requests.get(url)
-        if response.status_code != 200:
-            return None
+        final_url, metadata, raw = linkseek.crawl(
+            url=url,
+            formats=["html"],
+            use_browser=False,
+        )
 
-        metadata = {}
-        if 'Last-Modifed' in response.headers:
-            metadata['last-modified'] = response.headers['Last-Modified']
-
-        raw = response.text
-
-        return response.url, metadata, raw
+        return final_url, metadata, raw
 
     def parse(self, url, raw):
         soup = BeautifulSoup(raw, 'html.parser')
         base_node = soup.find('main', class_='news-content')
         if not base_node:
             return ''
-        
+
         return base_node.text
 
 online_content.add_online_retriever(MRXWLB.NAME, MRXWLB)
