@@ -1,7 +1,5 @@
 import datetime as dt
 
-from bs4 import BeautifulSoup
-
 from chat_with_llm.web import online_content
 from chat_with_llm.web import linkseek
 
@@ -50,20 +48,13 @@ class MRXWLB(online_content.OnlineContent):
         return urls
 
     def fetch(self, url):
-        final_url, metadata, raw = linkseek.crawl(
+        return linkseek.crawl(
             url=url,
-            formats=["html"],
-            use_browser=False,
+            formats=["markdown"],
+            use_browser=True,
         )
 
-        return final_url, metadata, raw
-
     def parse(self, url, raw):
-        soup = BeautifulSoup(raw, 'html.parser')
-        base_node = soup.find('main', class_='news-content')
-        if not base_node:
-            return ''
-
-        return base_node.text
+        return raw
 
 online_content.add_online_retriever(MRXWLB.NAME, MRXWLB)
