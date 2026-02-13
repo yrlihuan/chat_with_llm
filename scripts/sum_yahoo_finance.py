@@ -1,8 +1,10 @@
 import argparse
 import collections
 import json
+import sys
 
 from chat_with_llm import llm
+from chat_with_llm import logutils
 from chat_with_llm.web import online_content as oc
 from chat_with_llm.web import utils as web_utils
 
@@ -22,8 +24,10 @@ if __name__ == "__main__":
     parser.add_argument('--llm_use_case', type=str, default='sum_yahoo', help='The use case for the llm model')
     parser.add_argument('--boilerplate_threshold', type=int, default=3, help='The threshold for boilerplate content')
     parser.add_argument('--params', nargs='+', type=dict_item_converter, default=[], help='Parameters for the online retriever')
+    parser.add_argument('-q', '--quiet', action='store_true', default=False, help='静默模式，只显示错误信息（不显示进度和结果）')
 
     args = parser.parse_args()
+    logger = logutils.SumLogger(quiet=args.quiet)
 
     model_id = llm.get_model(args.model)
     home_retriever = oc.get_online_retriever(
@@ -52,8 +56,8 @@ if __name__ == "__main__":
 
     urls = [link['url'] for link in items]
     if len(urls) == 0:
-        print(f'No valid news link found in {args.home_url}')
-        exit(1)
+        logger.info('No valid news link found in %s', args.home_url)
+        sys.exit(1)
 
     if args.news_count > 0:
         urls = urls[:args.news_count]
@@ -76,8 +80,8 @@ if __name__ == "__main__":
     # 通过统计多篇文章中出现的相同的行数来判断是否是多余的内容
     contents = web_utils.remove_duplicated_lines(raw_contents, args.boilerplate_threshold, whitelist_prefixes=[article_sep])
 
-    print(f'开始使用模型{model_id}进行分析...\n')
+    logger.info('开始使用模型%s进行分析...', model_id)
 
     message = llm.chat(prompt=prompt, contents=contents, model_id=model_id,
                        use_case=args.llm_use_case, save=True)
-    print(message)
+    logger.result(message)
