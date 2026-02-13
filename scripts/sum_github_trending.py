@@ -3,7 +3,7 @@ import re
 import time
 from urllib.parse import urljoin
 
-from chat_with_llm import llm
+from chat_with_llm import llm, logutils
 from chat_with_llm.web import online_content as oc
 
 def extract_projects(contents):
@@ -204,8 +204,11 @@ if __name__ == "__main__":
     parser.add_argument('--llm_use_case', type=str, default='sum_github_trending', help='The use case for the llm model')
     parser.add_argument('--use_proxy', action='store_true', default=True, help='Use proxy for GitHub access')
     parser.add_argument('--no-proxy', dest='use_proxy', action='store_false', help='Do not use proxy for GitHub access')
+    parser.add_argument('-q', '--quiet', action='store_true', default=False, help='静默模式，只显示错误信息（不显示进度和结果）')
 
     args = parser.parse_args()
+
+    logger = logutils.SumLogger(quiet=args.quiet)
 
     model_id = llm.get_model(args.model)
 
@@ -230,7 +233,7 @@ if __name__ == "__main__":
     else:
         url = f'{base_url}?since={args.since}'
 
-    print(f'Fetching GitHub Trending page: {url}')
+    logger.info('Fetching GitHub Trending page: %s', url)
 
     # 抓取Trending页面
     trending_content = trending_retriever.retrieve(url)
@@ -238,16 +241,16 @@ if __name__ == "__main__":
     # 提取项目信息
     projects = extract_projects(trending_content)
 
-    print(f'Found {len(projects)} projects on trending page')
+    logger.info('Found %d projects on trending page', len(projects))
 
     # 按星标数过滤
     projects = [p for p in projects if p['stars'] >= args.min_stars]
-    print(f'{len(projects)} projects after min_stars ({args.min_stars}) filter')
+    logger.info('%d projects after min_stars (%d) filter', len(projects), args.min_stars)
 
     # 按编程语言过滤（如果指定）
     if args.language:
         projects = [p for p in projects if args.language.lower() in p['language'].lower()]
-        print(f'{len(projects)} projects after language ({args.language}) filter')
+        logger.info('%d projects after language (%s) filter', len(projects), args.language)
 
     # 按星标数排序（降序）
     projects.sort(key=lambda x: -x['stars'])
@@ -256,7 +259,7 @@ if __name__ == "__main__":
     if args.top_n > 0:
         projects = projects[:args.top_n]
 
-    print(f'Processing {len(projects)} projects')
+    logger.info('Processing %d projects', len(projects))
 
     # 重复检测
     chat_history_storage = llm.get_storage(args.llm_use_case)
@@ -291,14 +294,14 @@ if __name__ == "__main__":
         # 过滤已处理的项目
         original_count = len(projects)
         projects = [p for p in projects if p['url'] not in processed_urls]
-        print(f'Removed {original_count - len(projects)} duplicate projects')
+        logger.info('Removed %d duplicate projects', original_count - len(projects))
 
     if len(projects) == 0:
-        print('No new projects to process (all are duplicates or filtered out)')
+        logger.info('No new projects to process (all are duplicates or filtered out)')
         exit(0)
 
     # 为每个项目抓取README内容
-    print('Fetching README contents...')
+    logger.info('Fetching README contents...')
     for project in projects:
         readme_urls = build_readme_url(project)
         readme_content = ''
@@ -309,15 +312,15 @@ if __name__ == "__main__":
                 content = readme_retriever.retrieve(readme_url)
                 if content and len(content.strip()) > 100:  # 简单检查是否有足够内容
                     readme_content = content
-                    print(f'  ✓ {project["full_name"]}: README found at {readme_url}')
+                    logger.info('  ✓ %s: README found at %s', project["full_name"], readme_url)
                     break
             except Exception as e:
-                print(f'  ✗ {project["full_name"]}: Failed to fetch {readme_url} - {e}')
+                logger.error('  ✗ %s: Failed to fetch %s - %s', project["full_name"], readme_url, e)
                 continue
 
         project['readme_content'] = readme_content
         if not readme_content:
-            print(f'  ⚠ {project["full_name"]}: No README content found')
+            logger.info('  ⚠ %s: No README content found', project["full_name"])
 
     # 准备LLM输入内容（类似sum_hackernews.py的格式）
     contents = ''
@@ -337,7 +340,7 @@ if __name__ == "__main__":
         readme_preview = project['readme_content'][:3000] if project['readme_content'] else '（无README内容）'
         contents += f'README预览:\n{readme_preview}\n'
 
-    print(f'\nStarting analysis with model {model_id}...\n')
+    logger.info('Starting analysis with model %s...', model_id)
 
     # 调用LLM生成总结
     # 使用候选提示词中的v1版本
@@ -352,4 +355,4 @@ if __name__ == "__main__":
                        use_case=args.llm_use_case,
                        save=True)
 
-    print(message)
+    logger.result(message)
