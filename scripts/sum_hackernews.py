@@ -1,7 +1,7 @@
 import argparse
 import re
 
-from chat_with_llm import llm
+from chat_with_llm import llm, logutils
 from chat_with_llm.web import online_content as oc
 
 def extract_articles(contents):
@@ -106,10 +106,13 @@ if __name__ == "__main__":
     parser.add_argument('-m', '--model', type=str, default='ds-chat', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', default='v5')
     parser.add_argument('-c', '--min_comments', type=int, default=30, help='Minimum number of comments to consider reading the article')
-    parser.add_argument('-d', '--dedup_n', type=int, default=4, help='Remove duplicate articles from the last n runs.') 
+    parser.add_argument('-d', '--dedup_n', type=int, default=4, help='Remove duplicate articles from the last n runs.')
     parser.add_argument('--llm_use_case', type=str, default='sum_hn', help='The use case for the llm model')
+    parser.add_argument('-q', '--quiet', action='store_true', default=False, help='静默模式，只显示错误信息（不显示进度和结果）')
 
     args = parser.parse_args()
+
+    logger = logutils.SumLogger(quiet=args.quiet)
 
     model_id = llm.get_model(args.model)
     hn_retriever = oc.get_online_retriever('crawl4ai',
@@ -151,7 +154,7 @@ if __name__ == "__main__":
             articles = list(filter(lambda x: x['link'] not in recent_contents, articles))
 
     if len(articles) == 0:
-        print(f'No articles found with at least {args.min_comments} comments')
+        logger.info('No articles found with at least %d comments', args.min_comments)
         exit(1)
 
     articles_contents = list(retriever.retrieve_many([article['link'] for article in articles]))
@@ -180,12 +183,12 @@ if __name__ == "__main__":
         contents += f'({item["comments"]} comments)[{item["comments_link"]}]\n'
         contents += item['content'] + '\n'
 
-    print(f'共{len(articles)}篇文章如下:')
+    logger.info('共%d篇文章如下:', len(articles))
     for p, article in enumerate(articles):
-        print(f'{article["title"]} ({article["link"]}) ({article["comments"]} comments)')
+        logger.info('%s (%s) (%d comments)', article["title"], article["link"], article["comments"])
 
-    print(f'开始使用模型{model_id}进行分析...\n')
+    logger.info('开始使用模型%s进行分析...', model_id)
 
     message = llm.chat(prompt=prompt, contents=contents, model_id=model_id,
                        use_case=args.llm_use_case, save=True)
-    print(message)
+    logger.result(message)
