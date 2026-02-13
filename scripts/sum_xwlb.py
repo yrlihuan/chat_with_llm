@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-from chat_with_llm import llm
+from chat_with_llm import llm, logutils
 from chat_with_llm.web import online_content as oc
 
 if __name__ == '__main__':
@@ -23,8 +23,11 @@ if __name__ == '__main__':
     parser.add_argument('--use_news_date', type=lambda s: s.lower() == 'true' or s == '1', default=True, help='Whether to use the date of the news')
     parser.add_argument('--prompt_follow_contents', type=lambda s: s.lower() == 'true' or s == '1', default=False, help='Whether to follow the contents after the prompt')
     parser.add_argument('--llm_use_case', type=str, default='sum_xwlb', help='The use case for the llm model')
+    parser.add_argument('-q', '--quiet', action='store_true', default=False, help='静默模式，只显示错误信息（不显示进度和结果）')
 
     args = parser.parse_args()
+
+    logger = logutils.SumLogger(quiet=args.quiet)
 
     model_id = llm.get_model(args.model)
 
@@ -48,7 +51,16 @@ if __name__ == '__main__':
     outputs += prompt + '\n\n'
 
     cur_date = time.strftime('%Y%m%d', time.localtime())
-    for url in tqdm(urls):
+
+    # 根据静默模式控制进度条显示
+    if logger.is_quiet():
+        # 静默模式，不使用tqdm
+        url_iter = urls
+    else:
+        # 非静默模式，使用tqdm
+        url_iter = tqdm(urls)
+
+    for url in url_iter:
         key_date = retriever.url2id(url)
         contents = ''
         
@@ -56,7 +68,7 @@ if __name__ == '__main__':
         if parsed:
             contents += f'{key_date}日新闻联播\n\n{parsed}\n'
         else:
-            print(f'Retrieving {key_date} failed.')
+            logger.error('Retrieving %s failed.', key_date)
             continue
 
         save_date = key_date if cur_date != key_date and args.use_news_date else None
@@ -67,7 +79,7 @@ if __name__ == '__main__':
             retries=3, throw_ex=False)
         
         if not message:
-            print(f'Analyze {key_date} failed. Skip this date.')
+            logger.error('Analyze %s failed. Skip this date.', key_date)
             continue
         
         outputs += f'{key_date}\n{message}\n\n'
