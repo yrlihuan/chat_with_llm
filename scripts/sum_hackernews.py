@@ -1,10 +1,15 @@
 import argparse
 import re
+import sys
+from typing import List, Dict, Any, Optional
 
 from chat_with_llm import llm, logutils
 from chat_with_llm.web import online_content as oc
 
-def extract_articles(contents):
+# Constants
+HN_NEWS_URL = 'https://news.ycombinator.com/news'
+
+def extract_articles(contents: str) -> List[Dict[str, Any]]:
     # line is like:
     # 9. | [](https://news.ycombinator.com/vote?id=43339584&how=up&goto=news)| [Show HN: VSC – An open source 3D Rendering Engine in C++](https://github.com/WW92030-STORAGE/VSC)
     # ([github.com/ww92030-storage](https://news.ycombinator.com/from?site=github.com/ww92030-storage))
@@ -133,8 +138,11 @@ if __name__ == "__main__":
 
     contents = ''
 
-    hn_url = 'https://news.ycombinator.com/news'
-    hn_news = hn_retriever.retrieve(hn_url)
+    try:
+        hn_news = hn_retriever.retrieve(HN_NEWS_URL)
+    except Exception as e:
+        logger.error('Failed to retrieve HackerNews page: %s', str(e))
+        sys.exit(1)
     
     articles = extract_articles(hn_news)
 
@@ -155,9 +163,14 @@ if __name__ == "__main__":
 
     if len(articles) == 0:
         logger.info('No articles found with at least %d comments', args.min_comments)
-        exit(1)
+        sys.exit(1)
 
-    articles_contents = list(retriever.retrieve_many([article['link'] for article in articles]))
+    try:
+        articles_contents = list(retriever.retrieve_many([article['link'] for article in articles]))
+    except Exception as e:
+        logger.error('Failed to retrieve article contents: %s', str(e))
+        sys.exit(1)
+
     for item, s in zip(articles, articles_contents):
         item['content'] = s or ''
 
