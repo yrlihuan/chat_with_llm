@@ -4,7 +4,7 @@ import time
 
 from tqdm import tqdm
 
-from chat_with_llm import llm
+from chat_with_llm import llm, logutils
 from chat_with_llm.web import online_content as oc
 
 
@@ -55,8 +55,11 @@ if __name__ == "__main__":
     parser.add_argument('--min_comments', type=int, default=30, help='The minimum number of comments to retrieve')
     parser.add_argument('--skip_processed', action='store_true', default=False, help='Skip processed articles')
     parser.add_argument('--params', nargs='+', type=dict_item_converter, default=[], help='Parameters for the online retriever')
+    parser.add_argument('-q', '--quiet', action='store_true', default=False, help='静默模式，只显示错误信息（不显示进度和结果）')
 
     args = parser.parse_args()
+
+    logger = logutils.SumLogger(quiet=args.quiet)
 
     params = dict(args.params)
     params['min_comments'] = args.min_comments
@@ -104,9 +107,9 @@ if __name__ == "__main__":
 
             for url in urls:
                 if url in processed_urls:
-                    print(f'Skip {url}')
+                    logger.info('Skip %s', url)
                 else:
-                    print(f'Process {url}')
+                    logger.info('Process %s', url)
 
             urls = [url for url in urls if url not in processed_urls]
         
@@ -116,7 +119,7 @@ if __name__ == "__main__":
     article_urls = []
     for article_seq, (url, comments) in enumerate(zip(urls, article_comments)):
         if not comments:
-            print(f'Failed to retrieve comments for {url}')
+            logger.error('Failed to retrieve comments for %s', url)
             continue
 
         first_eol = comments.find('\n')
@@ -178,7 +181,7 @@ if __name__ == "__main__":
         
         t0 = time.time()
         try:
-            print(f'Summarizing {comment_url} with {model_to_use} ({len(contents)} bytes) ...', end=' ')
+            logger.info('Summarizing %s with %s (%d bytes) ...', comment_url, model_to_use, len(contents))
             message, reasoning, filename = llm.chat_impl(
                 prompt=prompt,
                 contents=contents,
@@ -187,8 +190,8 @@ if __name__ == "__main__":
                 save=True)
         except Exception as e:
             
-            print(f'Failed!')
-            print(f'Error: {e}')
+            logger.error('Failed!')
+            logger.error('Error: %s', e)
 
             # 如果失败了, 先尝试使用备用模型
             if not seq_retry:
@@ -202,4 +205,4 @@ if __name__ == "__main__":
         t1 = time.time()
         seq += 1
         seq_retry = False
-        print(f'Success ({t1 - t0:.2f} seconds).')
+        logger.info('Success (%.2f seconds).', t1 - t0)
