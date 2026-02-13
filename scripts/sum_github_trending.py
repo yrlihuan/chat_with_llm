@@ -1,12 +1,16 @@
 import argparse
 import re
+import sys
 import time
+from typing import List, Dict, Any
 from urllib.parse import urljoin
 
 from chat_with_llm import llm, logutils
 from chat_with_llm.web import online_content as oc
 
-def extract_projects(contents):
+SEPARATOR = '-' * 80
+
+def extract_projects(contents: str) -> List[Dict[str, Any]]:
     """
     从GitHub Trending页面Markdown格式内容中提取项目信息
 
@@ -26,7 +30,6 @@ def extract_projects(contents):
     - stars: 星标总数
     - stars_today: 今日新增星标数
     """
-    import re
     projects = []
     lines = contents.split('\n')
     i = 0
@@ -134,7 +137,7 @@ def extract_projects(contents):
 
     return projects
 
-def build_readme_url(project):
+def build_readme_url(project: Dict[str, Any]) -> List[str]:
     """
     构建README页面的URL
 
@@ -281,7 +284,6 @@ if __name__ == "__main__":
                     continue
 
                 # 尝试提取Markdown链接格式中的URL: [text](url)
-                import re
                 url_match = re.search(r'\[.*?\]\((https?://[^)]+)\)', line)
                 if url_match:
                     url = url_match.group(1)
@@ -298,7 +300,7 @@ if __name__ == "__main__":
 
     if len(projects) == 0:
         logger.info('No new projects to process (all are duplicates or filtered out)')
-        exit(0)
+        sys.exit(0)
 
     # 为每个项目抓取README内容
     logger.info('Fetching README contents...')
@@ -326,7 +328,7 @@ if __name__ == "__main__":
     contents = ''
     for i, project in enumerate(projects):
         if i > 0:
-            contents += '-' * 80 + '\n'
+            contents += SEPARATOR + '\n'
 
         # 项目标题和链接（用于去重）
         contents += f'[{project["full_name"]}]({project["url"]})\n'
