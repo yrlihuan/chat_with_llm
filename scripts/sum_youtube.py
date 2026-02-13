@@ -12,6 +12,7 @@ import argparse
 
 from chat_with_llm import llm
 from chat_with_llm import storage
+from chat_with_llm import logutils
 
 import re
 
@@ -102,8 +103,11 @@ if __name__ == '__main__':
     parser.add_argument('youtube_link', type=str, help='The youtube video link')
     parser.add_argument('-m', '--model', type=str, default='gemini-3.0-flash', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', type=str, default='v2', help='The prompt to use for generating summary')
+    parser.add_argument('-q', '--quiet', action='store_true', default=False, help='静默模式，只显示错误信息（不显示进度和结果）')
 
     args = parser.parse_args()
+
+    logger = logutils.SumLogger(quiet=args.quiet)
 
     model_id = llm.get_model(args.model)
 
@@ -156,11 +160,11 @@ if __name__ == '__main__':
             subs.append((cache_file.split('.')[1], 'txt', subtitle_storage.load(cache_file)))
 
     if len(subs) == 0:
-        print("Downloading subtitle file for video: %s" % args.youtube_link)
+        logger.info('Downloading subtitle file for video: %s', args.youtube_link)
         metadata = downsub.retrive_metadata(args.youtube_link)
         subs = downsub.retrive_subtitles(metadata)
         if len(subs) == 0:
-            print('Failed to retrieve subtitles for the video.')
+            logger.error('Failed to retrieve subtitles for the video.')
             sys.exit(1)
 
         for lang, fmt, content in subs:
@@ -197,11 +201,11 @@ if __name__ == '__main__':
     else:
         contents_text = contents
 
-    print(f'Parsing subtitle using {model_id}.')
+    logger.info('Parsing subtitle using %s.', model_id)
     contents_url = f'视频地址: {youtube_link}\n'
     message = contents_url + contents_text
     summary = llm.chat(prompt, message, model_id, use_case='sum_youtube', save=True)
-    print(summary)
+    logger.result(summary)
 
     # 保存结果
 
