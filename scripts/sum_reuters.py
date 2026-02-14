@@ -30,7 +30,11 @@ if __name__ == "__main__":
 
     logger = logutils.SumLogger(quiet=args.quiet)
 
-    model_id = llm.get_model(args.model)
+    try:
+        model_id = llm.get_model(args.model)
+    except ValueError as e:
+        logger.error('模型错误: %s', e)
+        sys.exit(1)
     home_retriever = oc.get_online_retriever(
         'crawl4ai',
         parser='link_extractor',
