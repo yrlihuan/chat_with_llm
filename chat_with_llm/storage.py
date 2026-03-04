@@ -42,6 +42,9 @@ class StorageBase(ABC):
     def base_path(self):
         pass
 
+    def close(self):
+        pass
+
 class ContentStorage_File(StorageBase):
     def __init__(self, storage_base, identifier):
         super().__init__(identifier)
@@ -101,23 +104,17 @@ class ContentStorage_Sqlite(StorageBase):
         self.db_path = db_path
         self.table = identifier or '_default'
 
-        conn = self._conn()
-        conn.execute(
+        self.conn = sqlite3.connect(self.db_path)
+        self.conn.execute(
             f'CREATE TABLE IF NOT EXISTS [{self.table}] '
             f'(key TEXT PRIMARY KEY, value BLOB)'
         )
-        conn.commit()
-        conn.close()
-
-    def _conn(self):
-        return sqlite3.connect(self.db_path)
+        self.conn.commit()
 
     def load(self, key):
-        conn = self._conn()
-        row = conn.execute(
+        row = self.conn.execute(
             f'SELECT value FROM [{self.table}] WHERE key = ?', (key,)
         ).fetchone()
-        conn.close()
         if row is None:
             return None
         data = row[0]
@@ -126,11 +123,9 @@ class ContentStorage_Sqlite(StorageBase):
         return data
 
     def load_bytes(self, key):
-        conn = self._conn()
-        row = conn.execute(
+        row = self.conn.execute(
             f'SELECT value FROM [{self.table}] WHERE key = ?', (key,)
         ).fetchone()
-        conn.close()
         if row is None:
             return None
         data = row[0]
@@ -141,37 +136,34 @@ class ContentStorage_Sqlite(StorageBase):
     def save(self, key, value):
         if isinstance(value, str):
             value = value.encode('utf-8')
-        conn = self._conn()
-        conn.execute(
+        self.conn.execute(
             f'INSERT OR REPLACE INTO [{self.table}] (key, value) VALUES (?, ?)',
             (key, value)
         )
-        conn.commit()
-        conn.close()
+        self.conn.commit()
 
     def has(self, key):
-        conn = self._conn()
-        row = conn.execute(
+        row = self.conn.execute(
             f'SELECT 1 FROM [{self.table}] WHERE key = ?', (key,)
         ).fetchone()
-        conn.close()
         return row is not None
 
     def list(self):
-        conn = self._conn()
-        rows = conn.execute(
+        rows = self.conn.execute(
             f'SELECT key FROM [{self.table}] ORDER BY key'
         ).fetchall()
-        conn.close()
         return [row[0] for row in rows]
 
     def delete(self, key):
-        conn = self._conn()
-        conn.execute(
+        self.conn.execute(
             f'DELETE FROM [{self.table}] WHERE key = ?', (key,)
         )
-        conn.commit()
-        conn.close()
+        self.conn.commit()
+
+    def close(self):
+        if self.conn:
+            self.conn.close()
+            self.conn = None
 
     def base_path(self):
         return os.path.dirname(self.db_path)
