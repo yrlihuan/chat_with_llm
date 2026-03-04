@@ -82,6 +82,8 @@ class ContentStorage_File(StorageBase):
     def list(self):
         keys = []
         for f in os.listdir(self.storage_path):
+            if f == 'storage.db' or f.endswith('-journal') or f.endswith('-wal') or f.endswith('-shm'):
+                continue
             keys.append(f)
 
         return keys
@@ -99,11 +101,17 @@ class ContentStorage_Sqlite(StorageBase):
         super().__init__(identifier)
 
         storage_base = os.path.expanduser(storage_base)
-        if not os.path.exists(storage_base):
-            os.makedirs(storage_base)
+        if identifier:
+            storage_path = os.path.join(storage_base, identifier)
+        else:
+            storage_path = storage_base
 
-        db_path = os.path.join(storage_base, 'storage.db')
+        if not os.path.exists(storage_path):
+            os.makedirs(storage_path)
+
+        db_path = os.path.join(storage_path, 'storage.db')
         self.db_path = db_path
+        self.storage_path = storage_path
         self.table = identifier or '_default'
 
         self.conn = sqlite3.connect(self.db_path)
@@ -168,7 +176,7 @@ class ContentStorage_Sqlite(StorageBase):
             self.conn = None
 
     def base_path(self):
-        return os.path.dirname(self.db_path)
+        return self.storage_path
 
 def get_storage(storage_type, identifier, storage_class='file'):
     storage_base = config.get('STORAGE_BASE_DIR')
