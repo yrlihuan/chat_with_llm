@@ -1,18 +1,20 @@
 import argparse
 import sys
 
+import fnmatch
+
 from chat_with_llm import storage
 
 VALID_STORAGE_TYPES = ['chat_history', 'web_cache', 'subtitle_cache', 'video_summary', 'browser_state']
 
-def migrate(storage_type, identifier, mode, dry_run=False, src=None, dst=None):
+def migrate(storage_type, identifier, pattern, mode, dry_run=False, src=None, dst=None):
     if src is None:
         src = storage.get_storage(storage_type, identifier, storage_class='file')
     if dst is None:
         dst = storage.get_storage(storage_type, identifier, storage_class='sqlite')
 
-    src_keys = set(src.list())
-    dst_keys = set(dst.list())
+    src_keys = {k for k in src.list() if fnmatch.fnmatch(k, pattern)}
+    dst_keys = {k for k in dst.list() if fnmatch.fnmatch(k, pattern)}
 
     to_add = src_keys - dst_keys
     to_update = src_keys & dst_keys
@@ -78,6 +80,11 @@ if __name__ == '__main__':
         help='skip: 忽略已存在的 key; update: 更新已存在的 key; sync: 完全同步 (会删除多余的 key). 默认 skip'
     )
     parser.add_argument(
+        '--pattern',
+        default='*',
+        help='Only migrate key with this pattern.'
+    )
+    parser.add_argument(
         '--dry-run',
         action='store_true',
         help='预览模式, 不实际执行'
@@ -117,7 +124,7 @@ if __name__ == '__main__':
             print(f'{prefix} (mode={args.mode})')
 
         added, updated, deleted, skipped = migrate(
-            args.storage_type, ident, args.mode, args.dry_run
+            args.storage_type, ident, args.pattern, args.mode, args.dry_run
         )
 
         print(f'{prefix} added={added}, updated={updated}, deleted={deleted}, skipped={skipped}')

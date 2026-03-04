@@ -1,50 +1,44 @@
 import argparse
 import tempfile
 import time
-import os
+import os.path
 
-from chat_with_llm.storage import ContentStorage_File, ContentStorage_Sqlite
-
-
-def populate(file_s, sqlite_s, n):
-    for i in range(n):
-        key = f'{i:06d}.txt'
-        value = f'content_{i}'
-        file_s.save(key, value)
-        sqlite_s.save(key, value)
+from chat_with_llm import storage
 
 
 def bench_list(storage, rounds):
     t0 = time.time()
     for _ in range(rounds):
         keys = storage.list()
+        for k in keys:
+            storage.load_bytes(k)
     t1 = time.time()
     return t1 - t0, len(keys)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Benchmark storage list performance')
-    parser.add_argument('-n', '--num_files', type=int, default=1000, help='Number of files to create')
-    parser.add_argument('-r', '--rounds', type=int, default=100, help='Number of list() calls')
+
+    parser.add_argument('--rounds', type=int, default=1)
+    parser.add_argument('--type', default='chat_history')
+    parser.add_argument('--identifier', default='sum_hn')
+    parser.add_argument('--class1', default='file')
+    parser.add_argument('--class2', default='sqlite')
 
     args = parser.parse_args()
 
     tmpdir = tempfile.mkdtemp()
-    file_s = ContentStorage_File(tmpdir, 'bench')
-    sqlite_s = ContentStorage_Sqlite(tmpdir, 'bench')
+    s1 = storage.get_storage(args.type, args.identifier, storage_class=args.class1)
+    s2 = storage.get_storage(args.type, args.identifier, storage_class=args.class2)
 
-    print(f'Populating {args.num_files} entries...')
-    populate(file_s, sqlite_s, args.num_files)
-
-    print(f'Running list() x {args.rounds}...\n')
-
-    file_time, file_count = bench_list(file_s, args.rounds)
-    sqlite_time, sqlite_count = bench_list(sqlite_s, args.rounds)
+    s1_time, s1_count = bench_list(s1, args.rounds)
+    s2_time, s2_count = bench_list(s2, args.rounds)
 
     print(f'{"Backend":<12} {"Keys":<8} {"Total (s)":<12} {"Per call (ms)":<14}')
     print('-' * 46)
-    print(f'{"File":<12} {file_count:<8} {file_time:<12.4f} {file_time / args.rounds * 1000:<14.3f}')
-    print(f'{"SQLite":<12} {sqlite_count:<8} {sqlite_time:<12.4f} {sqlite_time / args.rounds * 1000:<14.3f}')
-    print(f'\nSQLite / File = {sqlite_time / file_time:.2f}x')
+    print(f'{args.class1:<12} {s1_count:<8} {s1_time:<12.4f} {s1_time / args.rounds * 1000:<14.3f}')
+    print(f'{args.class2:<12} {s2_count:<8} {s2_time:<12.4f} {s2_time / args.rounds * 1000:<14.3f}')
+    print(f'\n{args.class2} / {args.class1} = {s2_time / s1_time:.2f}x')
 
-    sqlite_s.close()
+    s1.close()
+    s2.close()
