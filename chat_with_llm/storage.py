@@ -49,6 +49,7 @@ class ContentStorage_File(StorageBase):
     def __init__(self, storage_base, identifier):
         super().__init__(identifier)
 
+        storage_base = os.path.expanduser(storage_base)
         if identifier:
             storage_path = os.path.join(storage_base, identifier)
         else:
@@ -97,6 +98,7 @@ class ContentStorage_Sqlite(StorageBase):
     def __init__(self, storage_base, identifier):
         super().__init__(identifier)
 
+        storage_base = os.path.expanduser(storage_base)
         if not os.path.exists(storage_base):
             os.makedirs(storage_base)
 
