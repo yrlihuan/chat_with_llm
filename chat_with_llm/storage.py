@@ -18,6 +18,10 @@ class StorageBase(ABC):
         pass
 
     @abstractmethod
+    def load_bytes(self, key):
+        pass
+
+    @abstractmethod
     def save(self, key, value):
         pass
 
@@ -27,6 +31,10 @@ class StorageBase(ABC):
 
     @abstractmethod
     def list(self):
+        pass
+
+    @abstractmethod
+    def base_path(self):
         pass
 
 class ContentStorage_File(StorageBase):
@@ -48,7 +56,14 @@ class ContentStorage_File(StorageBase):
             return open(path, 'r').read()
         else:
             return None
-    
+
+    def load_bytes(self, key):
+        path = os.path.join(self.storage_path, key)
+        if os.path.exists(path):
+            return open(path, 'rb').read()
+        else:
+            return None
+
     def save(self, key, value):
         return open(os.path.join(self.storage_path, key), 'w').write(value)
     
@@ -61,6 +76,9 @@ class ContentStorage_File(StorageBase):
             keys.append(f)
 
         return keys
+
+    def base_path(self):
+        return self.storage_path
     
 def get_storage(storage_type, identifier, storage_class='file'):
     if storage_class == 'file':
