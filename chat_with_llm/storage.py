@@ -1,4 +1,5 @@
 import os.path
+import sqlite3
 
 from abc import ABC, abstractmethod
 
@@ -79,12 +80,93 @@ class ContentStorage_File(StorageBase):
 
     def base_path(self):
         return self.storage_path
-    
+
+class ContentStorage_Sqlite(StorageBase):
+    def __init__(self, storage_base, identifier):
+        super().__init__(identifier)
+
+        if not os.path.exists(storage_base):
+            os.makedirs(storage_base)
+
+        db_path = os.path.join(storage_base, 'storage.db')
+        self.db_path = db_path
+        self.table = identifier or '_default'
+
+        conn = self._conn()
+        conn.execute(
+            f'CREATE TABLE IF NOT EXISTS [{self.table}] '
+            f'(key TEXT PRIMARY KEY, value BLOB)'
+        )
+        conn.commit()
+        conn.close()
+
+    def _conn(self):
+        return sqlite3.connect(self.db_path)
+
+    def load(self, key):
+        conn = self._conn()
+        row = conn.execute(
+            f'SELECT value FROM [{self.table}] WHERE key = ?', (key,)
+        ).fetchone()
+        conn.close()
+        if row is None:
+            return None
+        data = row[0]
+        if isinstance(data, bytes):
+            return data.decode('utf-8')
+        return data
+
+    def load_bytes(self, key):
+        conn = self._conn()
+        row = conn.execute(
+            f'SELECT value FROM [{self.table}] WHERE key = ?', (key,)
+        ).fetchone()
+        conn.close()
+        if row is None:
+            return None
+        data = row[0]
+        if isinstance(data, str):
+            return data.encode('utf-8')
+        return data
+
+    def save(self, key, value):
+        if isinstance(value, str):
+            value = value.encode('utf-8')
+        conn = self._conn()
+        conn.execute(
+            f'INSERT OR REPLACE INTO [{self.table}] (key, value) VALUES (?, ?)',
+            (key, value)
+        )
+        conn.commit()
+        conn.close()
+
+    def has(self, key):
+        conn = self._conn()
+        row = conn.execute(
+            f'SELECT 1 FROM [{self.table}] WHERE key = ?', (key,)
+        ).fetchone()
+        conn.close()
+        return row is not None
+
+    def list(self):
+        conn = self._conn()
+        rows = conn.execute(
+            f'SELECT key FROM [{self.table}] ORDER BY key'
+        ).fetchall()
+        conn.close()
+        return [row[0] for row in rows]
+
+    def base_path(self):
+        return os.path.dirname(self.db_path)
+
 def get_storage(storage_type, identifier, storage_class='file'):
+    storage_base = config.get('STORAGE_BASE_DIR')
+    assert storage_type in ['chat_history', 'web_cache', 'subtitle_cache', 'video_summary', 'browser_state'], f'Unknown storage type: {storage_type}'
+
     if storage_class == 'file':
-        storage_base = config.get('STORAGE_BASE_DIR')
-        assert storage_type in ['chat_history', 'web_cache', 'subtitle_cache', 'video_summary', 'browser_state'], f'Unknown storage type: {storage_type}'
         return ContentStorage_File(os.path.join(storage_base, storage_type), identifier)
+    elif storage_class == 'sqlite':
+        return ContentStorage_Sqlite(os.path.join(storage_base, storage_type), identifier)
     else:
         raise ValueError(f'Unknown storage class: {storage_class}')
     
