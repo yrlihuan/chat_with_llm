@@ -35,6 +35,10 @@ class StorageBase(ABC):
         pass
 
     @abstractmethod
+    def delete(self, key):
+        pass
+
+    @abstractmethod
     def base_path(self):
         pass
 
@@ -77,6 +81,11 @@ class ContentStorage_File(StorageBase):
             keys.append(f)
 
         return keys
+
+    def delete(self, key):
+        path = os.path.join(self.storage_path, key)
+        if os.path.exists(path):
+            os.remove(path)
 
     def base_path(self):
         return self.storage_path
@@ -155,6 +164,14 @@ class ContentStorage_Sqlite(StorageBase):
         ).fetchall()
         conn.close()
         return [row[0] for row in rows]
+
+    def delete(self, key):
+        conn = self._conn()
+        conn.execute(
+            f'DELETE FROM [{self.table}] WHERE key = ?', (key,)
+        )
+        conn.commit()
+        conn.close()
 
     def base_path(self):
         return os.path.dirname(self.db_path)
