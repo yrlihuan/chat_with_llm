@@ -178,6 +178,46 @@ class ContentStorage_Sqlite(StorageBase):
     def base_path(self):
         return self.storage_path
 
+class ContentStorage_Combined(StorageBase):
+    """组合 file 和 sqlite storage. save 写入 sqlite, load 优先 file."""
+    def __init__(self, storage_base, identifier):
+        super().__init__(identifier)
+        self.file_storage = ContentStorage_File(storage_base, identifier)
+        self.sqlite_storage = ContentStorage_Sqlite(storage_base, identifier)
+
+    def load(self, key):
+        result = self.file_storage.load(key)
+        if result is None:
+            result = self.sqlite_storage.load(key)
+        return result
+
+    def load_bytes(self, key):
+        result = self.file_storage.load_bytes(key)
+        if result is None:
+            result = self.sqlite_storage.load_bytes(key)
+        return result
+
+    def save(self, key, value):
+        self.sqlite_storage.save(key, value)
+
+    def has(self, key):
+        return self.file_storage.has(key) or self.sqlite_storage.has(key)
+
+    def list(self):
+        file_keys = set(self.file_storage.list())
+        sqlite_keys = set(self.sqlite_storage.list())
+        return sorted(file_keys | sqlite_keys)
+
+    def delete(self, key):
+        self.file_storage.delete(key)
+        self.sqlite_storage.delete(key)
+
+    def base_path(self):
+        return self.file_storage.base_path()
+
+    def close(self):
+        self.sqlite_storage.close()
+
 def get_storage(storage_type, identifier, storage_class='file'):
     storage_base = config.get('STORAGE_BASE_DIR')
     assert storage_type in ['chat_history', 'web_cache', 'subtitle_cache', 'video_summary', 'browser_state'], f'Unknown storage type: {storage_type}'
@@ -186,6 +226,8 @@ def get_storage(storage_type, identifier, storage_class='file'):
         return ContentStorage_File(os.path.join(storage_base, storage_type), identifier)
     elif storage_class == 'sqlite':
         return ContentStorage_Sqlite(os.path.join(storage_base, storage_type), identifier)
+    elif storage_class == 'combined':
+        return ContentStorage_Combined(os.path.join(storage_base, storage_type), identifier)
     else:
         raise ValueError(f'Unknown storage class: {storage_class}')
     
