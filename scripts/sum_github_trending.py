@@ -203,7 +203,7 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--since', type=str, default='daily', choices=['daily', 'weekly', 'monthly'], help='Time range for trending')
     parser.add_argument('--top_n', type=int, default=10, help='Number of top projects to process')
     parser.add_argument('--min_stars', type=int, default=100, help='Minimum number of stars to consider')
-    parser.add_argument('-d', '--dedup_n', type=int, default=4, help='Remove duplicate projects from the last n runs.')
+    parser.add_argument('-d', '--dedup_n', type=int, default=30, help='Remove duplicate projects from the last n runs.')
     parser.add_argument('--llm_use_case', type=str, default='sum_github_trending', help='The use case for the llm model')
     parser.add_argument('--use_proxy', action='store_true', default=True, help='Use proxy for GitHub access')
     parser.add_argument('--no-proxy', dest='use_proxy', action='store_false', help='Do not use proxy for GitHub access')
