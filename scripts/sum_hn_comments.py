@@ -161,7 +161,12 @@ if __name__ == "__main__":
     while seq < len(urls):
         comment_url = urls[seq]
         comments = article_comments[seq]
-    
+
+        if not comments:
+            logger.error('Failed to retrieve comments for %s', comment_url)
+            seq += 1
+            continue
+
         model_id = llm.get_model(args.model)
         model_id_alt = llm.get_model(args.model_alt)
 
