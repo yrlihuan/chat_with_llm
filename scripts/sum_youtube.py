@@ -101,7 +101,7 @@ if __name__ == '__main__':
     }
 
     parser.add_argument('youtube_link', type=str, help='The youtube video link')
-    parser.add_argument('-m', '--model', type=str, default='gemini-3.0-flash', help='The model to use for generating summary')
+    parser.add_argument('-m', '--model', type=str, default='deepseek-v4-pro', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', type=str, default='v2', help='The prompt to use for generating summary')
     parser.add_argument('-q', '--quiet', action='store_true', default=False, help='静默模式，只显示错误信息（不显示进度和结果）')
 

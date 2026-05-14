@@ -197,7 +197,7 @@ if __name__ == "__main__":
               '- 在项目之间用"---"分隔\n\n'
     }
 
-    parser.add_argument('-m', '--model', type=str, default='ds-chat', help='The model to use for generating summary')
+    parser.add_argument('-m', '--model', type=str, default='deepseek-v4-pro', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', default='v3')
     parser.add_argument('-l', '--language', type=str, default='', help='Filter by programming language (e.g., python, javascript)')
     parser.add_argument('-s', '--since', type=str, default='daily', choices=['daily', 'weekly', 'monthly'], help='Time range for trending')
