@@ -143,7 +143,11 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error('Failed to retrieve HackerNews page: %s', str(e))
         sys.exit(1)
-    
+
+    if not hn_news:
+        logger.error('Failed to retrieve HackerNews page (empty response)')
+        sys.exit(1)
+
     articles = extract_articles(hn_news)
 
     articles = [article for article in articles if article['comments'] is not None and article['comments'] >= args.min_comments]
