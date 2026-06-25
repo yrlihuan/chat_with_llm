@@ -33,7 +33,7 @@ if __name__ == "__main__":
     home_retriever = oc.get_online_retriever(
         'crawl4ai',
         parser='link_extractor',
-        link_extractor='//*[self::div and contains(@class, "content")] | (.//text())[1] | (.//@href)[1]',
+        link_extractor='//li[contains(@class, "notification-list-item")] | (.//text()[normalize-space()])[last()] | (.//@href)[1]',
         use_proxy=True,
         cache_expire=1)
     

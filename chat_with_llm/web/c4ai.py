@@ -101,8 +101,10 @@ class Crawl4AI(online_content.OnlineContent):
             text_xpath = parts[1].strip()
             href_xpath = parts[2].strip()
 
-        text_xpath = '(.//text())[1]'
-        href_xpath = '(.//@href)[1]'
+        if text_xpath is None:
+            text_xpath = '(.//text())[1]'
+        if href_xpath is None:
+            href_xpath = '(.//@href)[1]'
 
         links = []
 
