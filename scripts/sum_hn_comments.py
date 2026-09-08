@@ -50,7 +50,7 @@ if __name__ == "__main__":
     parser.add_argument('-m', '--model', type=str, default='deepseek-v4-pro', help='The model to use for generating summary')
 
     parser.add_argument('--llm_use_case', type=str, default='sum_hn_comments', help='The use case for the llm model')
-    parser.add_argument('--model_alt', default='gemini-2.5-pro', help='The alternative model to use for generating summary')
+    parser.add_argument('--model_alt', default='', help='The alternative model to use for generating summary')
     parser.add_argument('--daily_topn', type=int, default=15, help='The number of daily top articles to retrieve')
     parser.add_argument('--min_comments', type=int, default=30, help='The minimum number of comments to retrieve')
     parser.add_argument('--skip_processed', action='store_true', default=False, help='Skip processed articles')
@@ -168,7 +168,7 @@ if __name__ == "__main__":
             continue
 
         model_id = llm.get_model(args.model)
-        model_id_alt = llm.get_model(args.model_alt)
+        model_id_alt = llm.get_model(args.model_alt or args.model)
 
         contents = ''
 

@@ -24,6 +24,7 @@ def _load_model_from_config():
     model_to_display_name = {}
     alias_to_model = {}
     model_delays = {}
+    model_reason = {}
 
     for data in models:
         model_id = data.get('name')
@@ -31,6 +32,9 @@ def _load_model_from_config():
         display = data.get('display')
         delay = float(data.get('delay', 0))
         disabled = data.get('disabled', False)
+        reason = data.get('reason')
+        if reason is not None:
+            model_reason[model_id] = bool(reason)
 
         # 显示名的最低优先级
         model_to_display_name[model_id] = model_id
@@ -57,9 +61,9 @@ def _load_model_from_config():
         else:
             model_delays[model_id] = delay
 
-    return model_to_display_name, alias_to_model, model_delays
+    return model_to_display_name, alias_to_model, model_delays, model_reason
 
-g_model_to_display_name, g_alias_to_model, g_model_delays = _load_model_from_config()
+g_model_to_display_name, g_alias_to_model, g_model_delays, g_model_reason = _load_model_from_config()
 
 def list_models():
     models = [m for m, delay in g_model_delays.items() if delay != -1]
@@ -140,6 +144,13 @@ def chat_impl(prompt,
     request_message = f'{prompt}{sep}{contents}' if not prompt_follow_contents else f'{contents}{sep}{prompt}'
     chat_completion = None
     retry_cnt = 0
+    # 按模型的reason配置显式控制思考开关; 未配置reason则遵循服务端默认
+    model = g_alias_to_model.get(model_id, model_id)
+    reason = g_model_reason.get(model)
+    create_kwargs = {}
+    if reason is not None:
+        create_kwargs['extra_body'] = {'chat_template_kwargs': {'enable_thinking': reason}}
+
     while chat_completion is None:
         try:
             chat_completion = client.chat.completions.create(
@@ -150,6 +161,7 @@ def chat_impl(prompt,
                     }
                 ],
                 model=model_id,
+                **create_kwargs,
             )
         except openai.OpenAIError as ex:
             if retry_cnt < retries:
