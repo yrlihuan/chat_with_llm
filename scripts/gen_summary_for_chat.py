@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Generate summary for chat history')
     parser.add_argument('-m', '--model', type=str, default='ds-chat', help='The model to use for generating summary')
-    parser.add_argument('-m2', '--model2', type=str, default='gemini-2.5-pro', help='The model to use for generating summary')
+    parser.add_argument('-m2', '--model2', type=str, default='', help='The model to use for generating summary')
     parser.add_argument('-p', '--prompt', type=str, default='v2')
     parser.add_argument('-u', '--use_cases', type=lambda s: s.split(','), default=[])
 
