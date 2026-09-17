@@ -14,6 +14,12 @@ from typing import List, Tuple
 from chat_with_llm import storage
 
 
+# 只有以"评论"为主的用例才启用裸 id 清理。
+# 其他用例（sum_xwlb / sum_hn / sum_yahoo 等）正文里含大量有实际含义的 6-8 位数字
+# （统计数字、日期、版本号，如 870269亿元、20220417、KB5078127），不能被误删。
+BARE_ID_STRIP_USE_CASES = {'sum_hn_comments'}
+
+
 def extract_response(content: str) -> str:
     """Extract the response part from chat history content."""
     lines = content.split('\n')
@@ -34,7 +40,7 @@ def extract_response(content: str) -> str:
     return '\n'.join(response_lines)
 
 
-def transform_markdown_to_plain_text(markdown_content: str) -> str:
+def transform_markdown_to_plain_text(markdown_content: str, strip_bare_ids: bool = False) -> str:
     """
     Transform markdown content to plain text format.
 
@@ -43,8 +49,13 @@ def transform_markdown_to_plain_text(markdown_content: str) -> str:
     - Convert bullet points to numbered lists
     - Remove markdown formatting (bold, italic, etc.)
     - Handle headers and other markdown elements
-    - Replace --- separators with two blank lines
+    - Replace separator lines (---, ----, ——, ...) with two blank lines
+    - Remove comment-id references / raw links (meaningless when read aloud)
     - (removed)Add punctuation to lines without proper sentence-ending punctuation
+
+    Args:
+        strip_bare_ids: 是否清理"裸"评论 id（6-8 位数字）。仅对评论类用例安全；
+            其他用例正文里的数字有实际含义，须保持 False。
     """
     if not markdown_content:
         return ""
@@ -60,8 +71,47 @@ def transform_markdown_to_plain_text(markdown_content: str) -> str:
     # Convert headers to plain text
     markdown_content = re.sub(r'^#+\s+', '', markdown_content, flags=re.MULTILINE)
 
-    # Replace --- separators with two blank lines
-    markdown_content = re.sub(r'^---\s*$', '\n\n', markdown_content, flags=re.MULTILINE)
+    # Replace separator lines (runs of dashes / en dashes / em dashes) with two blank lines.
+    # The LLM often echoes the article separators used by the sum_* scripts (e.g. '-' * 80)
+    # and sometimes invents its own (----, ——, etc.).
+    markdown_content = re.sub(r'^[ \t]*[-–—]{2,}[ \t]*$', '\n\n', markdown_content, flags=re.MULTILINE)
+
+    # Remove comment-id references / raw links that are meaningless when read aloud, e.g.:
+    #   "相关评论：47548623, 47548846, 47549133。" / "相关讨论： id:48037881 , id:48041909"
+    #   "（id: 47939086）" / "（Groxx id: 48089092）" / "[id:47907861]" / "(hansmayer, id=47905267)"
+    #   "（如 chromacity 47615578）" / "（#47105824）" / 裸 id "46655743, 46650459"
+    #   "https://news.ycombinator.com/item?id=47912973"
+    # 原始 URL：朗读无意义，且往往内含 ?id=<评论id>，整体删除
+    markdown_content = re.sub(r'[ \t]*https?://\S+', '', markdown_content)
+    # 带 "相关X：" 引导的 id 列表整体删除（数字 >=5 位，避免误删计数等小数字）
+    markdown_content = re.sub(
+        r'相关(?:评论|讨论|帖子|链接)[ \t]*[:：][ \t]*(?:(?:id[ \t]*[:：=]?[ \t]*)?[#＃]?\d{5,}[ \t]*[,，、]?[ \t]*)+[。.]?',
+        '', markdown_content)
+    # 括号内只含 id 的形式整体删除（"（id: 47939086）" / "（#47105824）" / "（47694076）" / "[id:47907861]"）
+    markdown_content = re.sub(
+        r'[ \t]*[（(\[][ \t]*id[ \t]*[:：=]?[ \t]*\d+[ \t]*[)）\]]', '', markdown_content, flags=re.IGNORECASE)
+    markdown_content = re.sub(
+        r'[ \t]*[（(\[][ \t]*[#＃]?\d{6,8}[ \t]*[)）\]]', '', markdown_content)
+    # 带 id 标签的形式： "id:47939086" / "id=47905267"
+    markdown_content = re.sub(
+        r'(?<![A-Za-z])id[ \t]*[:：=][ \t]*\d+', '', markdown_content, flags=re.IGNORECASE)
+    if strip_bare_ids:
+        # 裸评论 id（6-8 位数字，可带 # 前缀，且不与其它数字/小数点相邻）
+        markdown_content = re.sub(r'[ \t]*(?<![\d.])[#＃]?\d{6,8}(?![\d.])', '', markdown_content)
+        # 只剩 id 的行（如 "46447585 46447840"）整体删除
+        markdown_content = re.sub(
+            r'^[ \t]*(?:[-*+]|\d+\.)?[ \t]*[#＃]?\d{6,8}(?:[ \t]*[,，、][ \t]*[#＃]?\d{6,8})*[ \t]*$',
+            '', markdown_content, flags=re.MULTILINE)
+    # 清掉内容全是 id、删除后只剩列表符号/序号的空行
+    markdown_content = re.sub(r'^[ \t]*(?:[-*+]|\d+\.)[ \t]*$', '', markdown_content, flags=re.MULTILINE)
+
+    # Clean up separators / brackets left dangling by the removals above, e.g.
+    #   "讨论链接：, 。" -> "讨论链接。"
+    markdown_content = re.sub(r'[:：][ \t]*(?:[,，、][ \t]*)+(?=[。.)）\]]|$)', '', markdown_content, flags=re.MULTILINE)
+    markdown_content = re.sub(r'[,，、][ \t]*([。.])[ \t]*$', r'\1', markdown_content, flags=re.MULTILINE)
+    markdown_content = re.sub(r'(?<![（(])[,，、][ \t]*([)）\]])', r'\1', markdown_content)
+    # URL 被删除后可能留下悬空的方括号/圆括号，如 "(345条评论)[" -> "(345条评论)"
+    markdown_content = re.sub(r'[(（\[](?=[ \t]*$)', '', markdown_content, flags=re.MULTILINE)
 
     # Process bullet points and numbered lists
     lines = markdown_content.split('\n')
@@ -101,7 +151,8 @@ def transform_markdown_to_plain_text(markdown_content: str) -> str:
     return '\n'.join(transformed_lines)
 
 
-def process_file(storage_obj, key: str, output_dir: str = None, override: bool = False) -> Tuple[str, str]:
+def process_file(storage_obj, key: str, output_dir: str = None, override: bool = False,
+                 strip_bare_ids: bool = False) -> Tuple[str, str]:
     """Process a single chat history file."""
     try:
         # Determine output path
@@ -127,7 +178,7 @@ def process_file(storage_obj, key: str, output_dir: str = None, override: bool =
             return None, f"No response found in: {key}"
 
         # Transform markdown to plain text
-        plain_text = transform_markdown_to_plain_text(response_content)
+        plain_text = transform_markdown_to_plain_text(response_content, strip_bare_ids)
 
         # Save the transformed content
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -196,7 +247,8 @@ def main():
         skipped_count = 0
 
         for key in txt_files:
-            plain_text, error = process_file(storage_obj, key, args.output_dir, args.override)
+            plain_text, error = process_file(storage_obj, key, args.output_dir, args.override,
+                                             use_case in BARE_ID_STRIP_USE_CASES)
 
             if error:
                 if error:  # Only print non-None errors
