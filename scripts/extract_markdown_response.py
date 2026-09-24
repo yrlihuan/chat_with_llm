@@ -153,7 +153,14 @@ def transform_markdown_to_plain_text(markdown_content: str, strip_bare_ids: bool
 
 def process_file(storage_obj, key: str, output_dir: str = None, override: bool = False,
                  strip_bare_ids: bool = False) -> Tuple[str, str]:
-    """Process a single chat history file."""
+    """Process a single chat history file.
+
+    Returns:
+        (status, detail) where status is one of:
+          'processed' - plain text written; detail is the generated text
+          'skipped'   - nothing to do; detail is the skip reason
+          'error'     - failure; detail is the error message
+    """
     try:
         # Determine output path
         if output_dir:
@@ -166,16 +173,23 @@ def process_file(storage_obj, key: str, output_dir: str = None, override: bool =
 
         # Check if output file already exists
         if not override and os.path.exists(output_path):
-            return None, None  # Skip silently
+            return 'skipped', 'already exists'
+
+        # Require the summary to be generated first. The plain text (and thus the
+        # TTS audio) is only produced for conversations that already have a
+        # .summary.txt, so we never fall back to the raw beginning of the article.
+        summary_key = key[:-len('.txt')] + '.summary.txt'
+        if not storage_obj.has(summary_key):
+            return 'skipped', 'no summary'
 
         content = storage_obj.load(key)
         if not content:
-            return None, f"Empty file: {key}"
+            return 'error', f"Empty file: {key}"
 
         # Extract response
         response_content = extract_response(content)
         if not response_content:
-            return None, f"No response found in: {key}"
+            return 'error', f"No response found in: {key}"
 
         # Transform markdown to plain text
         plain_text = transform_markdown_to_plain_text(response_content, strip_bare_ids)
@@ -185,10 +199,10 @@ def process_file(storage_obj, key: str, output_dir: str = None, override: bool =
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(plain_text)
 
-        return plain_text, None
+        return 'processed', plain_text
 
     except Exception as e:
-        return None, f"Error processing {key}: {str(e)}"
+        return 'error', f"Error processing {key}: {str(e)}"
 
 
 def main():
@@ -247,18 +261,19 @@ def main():
         skipped_count = 0
 
         for key in txt_files:
-            plain_text, error = process_file(storage_obj, key, args.output_dir, args.override,
-                                             use_case in BARE_ID_STRIP_USE_CASES)
+            status, detail = process_file(storage_obj, key, args.output_dir, args.override,
+                                          use_case in BARE_ID_STRIP_USE_CASES)
 
-            if error:
-                if error:  # Only print non-None errors
-                    print(f"❌ {error}")
-                    error_count += 1
-                else:
-                    skipped_count += 1  # Silent skip (error is None)
-            elif plain_text:  # Only count if actually processed
+            if status == 'processed':
                 processed_count += 1
                 print(f"✅ Processed: {key}")
+            elif status == 'skipped':
+                skipped_count += 1
+                if detail == 'no summary':
+                    print(f"⏭️  Skipped (no summary): {key}")
+            else:
+                error_count += 1
+                print(f"❌ {detail}")
 
         print(f"Processed: {processed_count}, Skipped: {skipped_count}, Errors: {error_count}")
 
