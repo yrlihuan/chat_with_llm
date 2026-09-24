@@ -92,7 +92,9 @@ if __name__ == "__main__":
             date_lookback_str = time.strftime('%Y%m%d_%H%M%S', time.localtime(time.time() - date_lookback * 24 * 3600))
 
             for file in files:
-                if file.endswith('.input.txt') or file.endswith('.summary.txt'):
+                # 只处理会话文本文件, 跳过 .input.txt/.summary.txt/.plain.txt 以及 .mp3
+                # 等二进制文件(按 utf-8 读取 mp3 会抛 UnicodeDecodeError)
+                if not file.endswith('.txt') or file.endswith(('.input.txt', '.summary.txt', '.plain.txt')):
                     continue
 
                 # filename is in format: YYMMDD_HHMMSS_<identifier>.txt
